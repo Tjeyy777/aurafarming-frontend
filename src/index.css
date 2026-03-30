@@ -1,0 +1,13 @@
+:root {
+  --background: 220 20% 7%;
+  --foreground: 220 10% 92%;
+  /* ... paste the rest of the variables you shared here ... */
+  --radius: 0.75rem;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
