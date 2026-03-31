@@ -2,8 +2,10 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3000/api', 
+  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
+  
 });
+
 
 // Request Interceptor: Attach Token
 api.interceptors.request.use(
