@@ -91,6 +91,17 @@ export const useConsumables = () => {
     }
   };
 
+  const deleteItem = async (id) => {
+    try {
+      await api.delete(`/consumables/items/${id}`);
+      await fetchItems();
+      await fetchLowStockItems();
+      return { status: "success" };
+    } catch (err) {
+      return { status: "error", message: "Failed to delete item" };
+    }
+  };
+
   useEffect(() => {
     fetchItems();
     fetchLowStockItems();
@@ -106,6 +117,7 @@ export const useConsumables = () => {
     fetchItemTransactions,
     addItem,
     updateItem,
+    deleteItem,
     addTransaction,
   };
 };

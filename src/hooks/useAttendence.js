@@ -4,11 +4,11 @@ import { useState } from "react";
 export const useAttendance = () => {
   const [loading, setLoading] = useState(false);
 
-  // POST /attendance  — matches router.post("/", ...)
+  // ─── POST /attendance — mark or update attendance ───
   const markAttendance = async (payload) => {
     setLoading(true);
     try {
-      const res = await api.post("/attendance", payload); 
+      const res = await api.post("/attendance", payload);
       return res.data;
     } catch (err) {
       console.error("Mark attendance failed", err);
@@ -21,26 +21,37 @@ export const useAttendance = () => {
     }
   };
 
-  // GET /attendance?date=2024-06-10  — matches router.get("/", ...)
+  // ─── GET /attendance?date=YYYY-MM-DD — fetch daily records ───
   const getAttendanceByDate = async (date) => {
     try {
       const res = await api.get("/attendance", { params: { date } });
-      return res.data; // { status, results, data: [...] }
+      return res.data;
     } catch (err) {
       console.error("Fetch by date failed", err);
       return null;
     }
   };
 
-  // GET /attendance/report/monthly?employeeId=X&year=Y&month=M
-  const getMonthlyAttendance = async (employeeId, year, month) => {
+  // ─── GET /attendance/employee/:id — full history for one employee ───
+  const getEmployeeHistory = async (employeeId) => {
+    try {
+      const res = await api.get(`/attendance/employee/${employeeId}`);
+      return res.data;
+    } catch (err) {
+      console.error("Employee history failed", err);
+      return null;
+    }
+  };
+
+  // ─── REPORTS ───
+  const getMonthlyReport = async (employeeId, year, month) => {
     try {
       const res = await api.get("/attendance/report/monthly", {
         params: { employeeId, year, month },
       });
-      return res.data; // { status, data: { presentDays, absentDays, dailyRecords, ... } }
+      return res.data;
     } catch (err) {
-      console.error("Monthly report fetch failed", err);
+      console.error("Monthly report failed", err);
       return null;
     }
   };
@@ -69,13 +80,13 @@ export const useAttendance = () => {
     }
   };
 
-  // Add to return object:
   return {
     loading,
     markAttendance,
     getAttendanceByDate,
-    getMonthlyAttendance,
-    getWeeklyReport, 
-    getDailyReport, 
+    getEmployeeHistory,
+    getMonthlyReport,
+    getWeeklyReport,
+    getDailyReport,
   };
 };

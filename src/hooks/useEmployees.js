@@ -4,50 +4,94 @@ import api from '../api/axiosConfig';
 export const useEmployees = () => {
   const queryClient = useQueryClient();
 
-  // Fetching Employees
+  // 🔹 GET Employees
   const employeesQuery = useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
-      const response = await api.get('/employees');
-      // Accessing .data.data because of your Express controller structure
-      return response.data.data; 
+      const res = await api.get('/employees');
+      return res.data.data;
     },
   });
 
-  // Creating Employee
-  const addEmployeeMutation = useMutation({
-    mutationFn: async (newEmp) => {
-      const response = await api.post('/employees', newEmp);
-      return response.data.data;
+  // 🔹 GET Roles
+  const rolesQuery = useQuery({
+    queryKey: ['employee-roles'],
+    queryFn: async () => {
+      const res = await api.get('/employees/roles');
+      return res.data.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['employees']);
-    }
   });
-  // DELETE: Remove from MongoDB
-  const deleteEmployeeMutation = useMutation({
-    mutationFn: async (id) => {
-      await api.delete(`/employees/${id}`);
+
+  // 🔹 SYNC BIOMETRIC
+  const syncBiometricMutation = useMutation({
+    mutationFn: async ({ fromDate, toDate }) => {
+      const res = await api.post(
+        `/attendance/sync-biometric?fromDate=${fromDate}&toDate=${toDate}`
+      );
+      return res.data;
     },
     onSuccess: () => {
-      // Refresh the list immediately after deleting
       queryClient.invalidateQueries(['employees']);
-    }
+    },
+  });
+
+  // 🔹 ROLE MUTATIONS
+  const addRoleMutation = useMutation({
+    mutationFn: (data) => api.post('/employees/roles', data),
+    onSuccess: () => queryClient.invalidateQueries(['employee-roles']),
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ id, updatedData }) =>
+      api.patch(`/employees/roles/${id}`, updatedData),
+    onSuccess: () => queryClient.invalidateQueries(['employee-roles']),
+  });
+
+  const deleteRoleMutation = useMutation({
+    mutationFn: (id) => api.delete(`/employees/roles/${id}`),
+    onSuccess: () => queryClient.invalidateQueries(['employee-roles']),
+  });
+
+  // 🔹 EMPLOYEE MUTATIONS
+  const addEmployeeMutation = useMutation({
+    mutationFn: (data) => api.post('/employees', data),
+    onSuccess: () => queryClient.invalidateQueries(['employees']),
   });
 
   const updateEmployeeMutation = useMutation({
-  mutationFn: async ({ id, updatedData }) => {
-    const response = await api.patch(`/employees/${id}`, updatedData);
-    return response.data.data;
-  },
-  onSuccess: () => queryClient.invalidateQueries(['employees']),
-});
+    mutationFn: ({ id, updatedData }) =>
+      api.patch(`/employees/${id}`, updatedData),
+    onSuccess: () => queryClient.invalidateQueries(['employees']),
+  });
 
-  return { 
-    ...employeesQuery, 
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: (id) => api.delete(`/employees/${id}`),
+    onSuccess: () => queryClient.invalidateQueries(['employees']),
+  });
+
+  const reactivateEmployeeMutation = useMutation({
+    mutationFn: (id) => api.patch(`/employees/${id}`, { isActive: true }),
+    onSuccess: () => queryClient.invalidateQueries(['employees']),
+  });
+
+  return {
+    employees: employeesQuery.data || [],
+    roles: rolesQuery.data || [],
+    isLoading: employeesQuery.isLoading,
+    isLoadingRoles: rolesQuery.isLoading,
+
+    // actions
     addEmployee: addEmployeeMutation.mutate,
     updateEmployee: updateEmployeeMutation.mutate,
     deleteEmployee: deleteEmployeeMutation.mutate,
-    isAdding: addEmployeeMutation.isPending 
+    deactivateEmployee: deleteEmployeeMutation.mutate,
+    reactivateEmployee: reactivateEmployeeMutation.mutate,
+
+    addRole: addRoleMutation.mutateAsync,
+    updateRole: updateRoleMutation.mutate,
+    deleteRole: deleteRoleMutation.mutate,
+
+    syncBiometric: syncBiometricMutation.mutateAsync,
+    isSyncing: syncBiometricMutation.isPending,
   };
 };

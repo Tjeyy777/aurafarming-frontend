@@ -1,4 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
@@ -18,11 +20,14 @@ import {
   Divider,
   Fab,
   Grid,
+  IconButton,
+  InputAdornment,
   MenuItem,
   Stack,
   Tab,
   Tabs,
   TextField,
+  TablePagination,
   Typography
 } from "@mui/material";
 import { useMemo, useState } from "react";
@@ -35,18 +40,26 @@ const statusOptions = ["active", "inactive"];
 export default function ExplosivesPage() {
   const {
     items,
+    sellers,
     lowStockItems,
     transactions,
     isLoading,
     fetchItemTransactions,
     addItem,
     updateItem,
+    deleteItem,
+    addSeller,
     addTransaction,
   } = useInventory();
+
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [openItemDialog, setOpenItemDialog] = useState(false);
+  const [openSellerDialog, setOpenSellerDialog] = useState(false);
   const [openTransactionDialog, setOpenTransactionDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -61,6 +74,13 @@ export default function ExplosivesPage() {
     unitCost: "",
     lowStockLimit: "",
     status: "active",
+    seller: "",
+  });
+
+  const [sellerForm, setSellerForm] = useState({
+    name: "",
+    licenseNumber: "",
+    contactPerson: "",
   });
 
   const [transactionForm, setTransactionForm] = useState({
@@ -95,6 +115,7 @@ export default function ExplosivesPage() {
       unitCost: "",
       lowStockLimit: "",
       status: "active",
+      seller: "",
     });
     setOpenItemDialog(true);
   };
@@ -110,6 +131,7 @@ export default function ExplosivesPage() {
       unitCost: item.unitCost || "",
       lowStockLimit: item.lowStockLimit || "",
       status: item.status || "active",
+      seller: item.seller?._id || item.seller || "",
     });
     setOpenItemDialog(true);
   };
@@ -125,10 +147,11 @@ export default function ExplosivesPage() {
       !itemForm.name ||
       !itemForm.category ||
       !itemForm.unit ||
+      !itemForm.seller ||
       itemForm.unitCost === "" ||
       itemForm.lowStockLimit === ""
     ) {
-      setError("Please fill all required fields.");
+      setError("Please fill all required fields, including Seller.");
       return;
     }
 
@@ -144,6 +167,7 @@ export default function ExplosivesPage() {
       unitCost: Number(itemForm.unitCost),
       lowStockLimit: Number(itemForm.lowStockLimit),
       status: itemForm.status,
+      seller: itemForm.seller,
     };
 
     if (!editingId) {
@@ -163,6 +187,27 @@ export default function ExplosivesPage() {
     }
 
     handleCloseItemDialog();
+  };
+
+  const handleSaveSeller = async () => {
+    if (!sellerForm.name) {
+      setError("Seller name is required.");
+      return;
+    }
+
+    const res = await addSeller(sellerForm);
+    if (res?.status === "error") {
+      setError(res.message);
+      return;
+    }
+
+    // Automatically select the new seller in the item form
+    if (res.data?._id) {
+      setItemForm((prev) => ({ ...prev, seller: res.data._id }));
+    }
+
+    setOpenSellerDialog(false);
+    setSellerForm({ name: "", licenseNumber: "", contactPerson: "" });
   };
 
   const handleViewItem = async (item) => {
@@ -354,7 +399,9 @@ export default function ExplosivesPage() {
 
       {/* Items Grid */}
       <Grid container spacing={2}>
-        {filteredItems.map((item) => {
+        {filteredItems
+          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((item) => {
           const isLow = item.currentStock <= item.lowStockLimit;
 
           return (
@@ -393,6 +440,9 @@ export default function ExplosivesPage() {
                   </Typography>
 
                   <Typography sx={{ mt: 2 }}>Unit Cost: ₹{item.unitCost}</Typography>
+                  <Typography color="text.secondary">
+                    Seller: {item.seller?.name || "N/A"}
+                  </Typography>
                   <Typography color="text.secondary">Low Stock Limit: {item.lowStockLimit}</Typography>
 
                   {isLow && (
@@ -401,7 +451,7 @@ export default function ExplosivesPage() {
                     </Alert>
                   )}
 
-                  <Stack direction="row" spacing={1} mt={2}>
+                  <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" useFlexGap>
                     <Button
                       size="small"
                       variant="outlined"
@@ -426,6 +476,19 @@ export default function ExplosivesPage() {
                     >
                       Transaction
                     </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      startIcon={<DeleteIcon />}
+                      onClick={() => {
+                        if (window.confirm(`Delete "${item.name}"? This cannot be undone.`)) {
+                          deleteItem(item._id);
+                        }
+                      }}
+                    >
+                      Delete
+                    </Button>
                   </Stack>
                 </CardContent>
               </Card>
@@ -433,6 +496,20 @@ export default function ExplosivesPage() {
           );
         })}
       </Grid>
+
+      {/* Pagination */}
+      {filteredItems.length > rowsPerPage && (
+        <TablePagination
+          component="div"
+          count={filteredItems.length}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+          rowsPerPageOptions={[6, 12, 24, 48]}
+          sx={{ mt: 2 }}
+        />
+      )}
 
       {filteredItems.length === 0 && (
         <Card sx={{ mt: 3 }}>
@@ -480,6 +557,41 @@ export default function ExplosivesPage() {
                   {cat}
                 </MenuItem>
               ))}
+          </TextField>
+
+          <TextField
+            select
+            label="Seller"
+            value={itemForm.seller}
+            onChange={(e) => setItemForm({ ...itemForm, seller: e.target.value })}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end" sx={{ mr: 2 }}>
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenSellerDialog(true);
+                    }}
+                  >
+                    <AddCircleOutlineIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          >
+            {sellers.length === 0 ? (
+              <MenuItem disabled value="">
+                No sellers found. Add one first.
+              </MenuItem>
+            ) : (
+              sellers.map((s) => (
+                <MenuItem key={s._id} value={s._id}>
+                  {s.name} {s.licenseNumber ? `(${s.licenseNumber})` : ""}
+                </MenuItem>
+              ))
+            )}
           </TextField>
 
           <Stack direction="row" spacing={2}>
@@ -621,6 +733,39 @@ export default function ExplosivesPage() {
         </DialogActions>
       </Dialog>
 
+      {/* Quick Add Seller Dialog */}
+      <Dialog open={openSellerDialog} onClose={() => setOpenSellerDialog(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ fontWeight: "bold" }}>Add New Seller</DialogTitle>
+        <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2.5, pt: 2 }}>
+          {error && <Alert severity="error">{error}</Alert>}
+          <TextField
+            label="Seller Name"
+            value={sellerForm.name}
+            onChange={(e) => setSellerForm({ ...sellerForm, name: e.target.value })}
+            fullWidth
+            required
+          />
+          <TextField
+            label="License Number"
+            value={sellerForm.licenseNumber}
+            onChange={(e) => setSellerForm({ ...sellerForm, licenseNumber: e.target.value })}
+            fullWidth
+          />
+          <TextField
+            label="Contact Person"
+            value={sellerForm.contactPerson}
+            onChange={(e) => setSellerForm({ ...sellerForm, contactPerson: e.target.value })}
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenSellerDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveSeller}>
+            Save Seller
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Details Dialog */}
       <Dialog open={!!selectedItem} onClose={() => setSelectedItem(null)} fullWidth maxWidth="md">
         <DialogTitle sx={{ fontWeight: "bold" }}>
@@ -647,6 +792,10 @@ export default function ExplosivesPage() {
             </Stack>
 
             <Typography sx={{ mt: 2 }}>Unit Cost: ₹{selectedItem?.unitCost}</Typography>
+            <Typography>
+              Seller: {selectedItem?.seller?.name || (typeof selectedItem?.seller === 'string' ? sellers.find(s => s._id === selectedItem.seller)?.name : "N/A")}
+            </Typography>
+            {selectedItem?.seller?.licenseNumber && <Typography variant="body2" color="text.secondary">License: {selectedItem.seller.licenseNumber}</Typography>}
             <Typography>Low Stock Limit: {selectedItem?.lowStockLimit}</Typography>
           </Box>
 

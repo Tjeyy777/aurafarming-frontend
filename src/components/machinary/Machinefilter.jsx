@@ -4,7 +4,6 @@ import { MACHINE_TYPES } from './machinaryutils';
 
 export default function MachineFilters({
   search,        setSearch,
-  ownershipFilter, setOwnershipFilter,
   typeFilter,    setTypeFilter,
   statusFilter,  setStatusFilter,
   serviceFilter, setServiceFilter,
@@ -27,15 +26,6 @@ export default function MachineFilters({
       />
 
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <TextField
-          select size="small" value={ownershipFilter}
-          onChange={(e) => setOwnershipFilter(e.target.value)}
-          sx={{ minWidth: 130 }}
-        >
-          <MenuItem value="All">All Ownership</MenuItem>
-          <MenuItem value="owned">Owned</MenuItem>
-          <MenuItem value="rented">Rented</MenuItem>
-        </TextField>
 
         <TextField
           select size="small" value={typeFilter}

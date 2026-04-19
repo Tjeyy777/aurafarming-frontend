@@ -1,5 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import BuildCircleIcon from "@mui/icons-material/BuildCircle";
+import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -23,6 +24,7 @@ import {
     Tab,
     Tabs,
     TextField,
+    TablePagination,
     Typography,
 } from "@mui/material";
 import { useMemo, useState } from "react";
@@ -50,8 +52,12 @@ export default function ConsumablesPage() {
     fetchItemTransactions,
     addItem,
     updateItem,
+    deleteItem,
     addTransaction,
   } = useConsumables();
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -363,7 +369,9 @@ export default function ConsumablesPage() {
 
       {/* Cards */}
       <Grid container spacing={2}>
-        {filteredItems.map((item) => {
+        {filteredItems
+          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((item) => {
           const isLow = item.currentStock <= item.lowStockLimit;
 
           return (
@@ -414,7 +422,7 @@ export default function ConsumablesPage() {
                     </Alert>
                   )}
 
-                  <Stack direction="row" spacing={1} mt={2} flexWrap="wrap">
+                  <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" useFlexGap>
                     <Button
                       size="small"
                       variant="outlined"
@@ -440,6 +448,19 @@ export default function ConsumablesPage() {
                     >
                       Transaction
                     </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      startIcon={<DeleteIcon />}
+                      onClick={() => {
+                        if (window.confirm(`Delete "${item.name}"? This cannot be undone.`)) {
+                          deleteItem(item._id);
+                        }
+                      }}
+                    >
+                      Delete
+                    </Button>
                   </Stack>
                 </CardContent>
               </Card>
@@ -447,6 +468,20 @@ export default function ConsumablesPage() {
           );
         })}
       </Grid>
+
+      {/* Pagination */}
+      {filteredItems.length > rowsPerPage && (
+        <TablePagination
+          component="div"
+          count={filteredItems.length}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+          rowsPerPageOptions={[6, 12, 24, 48]}
+          sx={{ mt: 2 }}
+        />
+      )}
 
       {filteredItems.length === 0 && (
         <Card sx={{ mt: 3 }}>

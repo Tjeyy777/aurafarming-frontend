@@ -18,6 +18,7 @@ import {
     Grid,
     Stack,
     TextField,
+    TablePagination,
     Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -42,6 +43,8 @@ export default function ExpensesPage() {
   } = useExpenses();
 
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
   const [filterDate, setFilterDate] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
@@ -346,7 +349,9 @@ export default function ExpensesPage() {
       </Card>
 
       <Grid container spacing={2}>
-        {filteredExpenses.map((expense) => (
+        {filteredExpenses
+          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((expense) => (
           <Grid item xs={12} md={6} lg={4} key={expense._id}>
             <Card
               sx={{
@@ -403,6 +408,20 @@ export default function ExpensesPage() {
           </Grid>
         ))}
       </Grid>
+
+      {/* Pagination */}
+      {filteredExpenses.length > rowsPerPage && (
+        <TablePagination
+          component="div"
+          count={filteredExpenses.length}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+          rowsPerPageOptions={[6, 12, 24, 48]}
+          sx={{ mt: 2 }}
+        />
+      )}
 
       {filteredExpenses.length === 0 && (
         <Card sx={{ mt: 3 }}>

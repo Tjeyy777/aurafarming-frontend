@@ -5,7 +5,7 @@ import {
   Box, IconButton, Paper, Switch,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { MACHINE_TYPES, OWNERSHIP_TYPES, FUEL_TYPES, STATUS_TYPES } from './machinaryutils';
+import { MACHINE_TYPES, FUEL_TYPES, STATUS_TYPES } from './machinaryutils';
 
 const Label = ({ children }) => (
   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
@@ -19,12 +19,10 @@ export default function MachineForm({ open, machine, onSave, onCancel, loading }
     machineName:            '',
     machineCode:            '',
     machineType:            'excavator',
-    ownershipType:          'owned',
     fuelType:               'diesel',
     currentMeterReading:    '',
     status:                 'active',
     notes:                  '',
-    hourlyRate:             '',
     serviceReminderEnabled: false,
     serviceIntervalHours:   '250',
     lastServiceMeterReading: '',
@@ -36,12 +34,10 @@ export default function MachineForm({ open, machine, onSave, onCancel, loading }
         machineName:            machine?.machineName || '',
         machineCode:            machine?.machineCode || '',
         machineType:            machine?.machineType || 'excavator',
-        ownershipType:          machine?.ownershipType || 'owned',
         fuelType:               machine?.fuelType || 'diesel',
         currentMeterReading:    machine?.currentMeterReading?.toString() || '',
         status:                 machine?.status || 'active',
         notes:                  machine?.notes || '',
-        hourlyRate:             machine?.hourlyRate?.toString() || '',
         serviceReminderEnabled: machine?.serviceReminderEnabled ?? false,
         serviceIntervalHours:   machine?.serviceIntervalHours?.toString() || '250',
         lastServiceMeterReading:machine?.lastServiceMeterReading?.toString() || '',
@@ -64,12 +60,10 @@ export default function MachineForm({ open, machine, onSave, onCancel, loading }
       machineName:             form.machineName.trim(),
       machineCode:             form.machineCode.trim(),
       machineType:             form.machineType,
-      ownershipType:           form.ownershipType,
       fuelType:                form.fuelType,
       currentMeterReading:     parseFloat(form.currentMeterReading) || 0,
       status:                  form.status,
       notes:                   form.notes.trim(),
-      hourlyRate:              form.ownershipType === 'rented' ? parseFloat(form.hourlyRate) || 0 : 0,
       serviceReminderEnabled:  form.serviceReminderEnabled,
       serviceIntervalHours:    form.serviceReminderEnabled ? parseFloat(form.serviceIntervalHours) || 0 : 0,
       lastServiceMeterReading: form.serviceReminderEnabled ? parseFloat(form.lastServiceMeterReading) || 0 : 0,
@@ -100,12 +94,6 @@ export default function MachineForm({ open, machine, onSave, onCancel, loading }
             </TextField>
           </Grid>
           <Grid item xs={6}>
-            <Label>Ownership</Label>
-            <TextField fullWidth select value={form.ownershipType} onChange={(e) => set('ownershipType', e.target.value)}>
-              {OWNERSHIP_TYPES.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
-            </TextField>
-          </Grid>
-          <Grid item xs={6}>
             <Label>Fuel Type</Label>
             <TextField fullWidth select value={form.fuelType} onChange={(e) => set('fuelType', e.target.value)}>
               {FUEL_TYPES.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
@@ -128,18 +116,6 @@ export default function MachineForm({ open, machine, onSave, onCancel, loading }
             />
             <Typography variant="caption" color="text.secondary">Cumulative hours on the machine meter</Typography>
           </Grid>
-          {form.ownershipType === 'rented' && (
-            <Grid item xs={12}>
-              <Label>Hourly Rate (₹)</Label>
-              <TextField
-                fullWidth type="number"
-                inputProps={{ step: '0.01', min: 0 }}
-                value={form.hourlyRate}
-                onChange={(e) => set('hourlyRate', e.target.value)}
-                placeholder="0"
-              />
-            </Grid>
-          )}
           <Grid item xs={12}>
             <Label>Notes</Label>
             <TextField fullWidth multiline rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Optional notes..." />
