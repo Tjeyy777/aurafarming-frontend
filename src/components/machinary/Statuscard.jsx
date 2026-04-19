@@ -4,8 +4,6 @@ export default function StatsCards({ stats, onFilterService }) {
   const cards = [
     { label: 'Total', value: stats.total, color: 'text.primary' },
     { label: 'Active', value: stats.active, color: 'success.main' },
-    { label: 'Owned', value: stats.owned, color: 'text.primary' },
-    { label: 'Rented', value: stats.rented, color: 'text.primary' },
     { 
       label: 'Service Due', 
       value: stats.dueForService, 

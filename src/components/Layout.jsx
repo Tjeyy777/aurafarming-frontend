@@ -1,7 +1,7 @@
 import React from "react";
 import { 
   Box, Drawer, List, ListItemButton, ListItemIcon, ListItemText, 
-  Typography, IconButton, Tooltip, useTheme, Avatar, Divider 
+  Typography, IconButton, Tooltip, useTheme, Avatar, Divider, Collapse 
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 
@@ -11,6 +11,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import PeopleIcon from "@mui/icons-material/People";
 import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
 import ScaleIcon from "@mui/icons-material/Scale";
@@ -18,18 +19,32 @@ import WarningIcon from "@mui/icons-material/Warning";
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import LogoutIcon from '@mui/icons-material/Logout';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import HistoryIcon from '@mui/icons-material/History';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { useAuthStore } from "../store/useAuthStore";
 
 const drawerWidth = 272;
 
 const menuItems = [
-  { text: "Dashboard", icon: <DashboardIcon fontSize="small" />, section: "overview" },
+  { text: "Dashboard", icon: <DashboardIcon fontSize="small" />, section: "overview", adminOnly: true },
   { text: "Employees", icon: <PeopleIcon fontSize="small" />, section: "operations" },
   { text: "Attendance", icon: <EventNoteIcon fontSize="small" />, section: "operations" },
   { text: "Weighbridge", icon: <ScaleIcon fontSize="small" />, section: "operations" },
   { text: "Explosives", icon: <WarningIcon fontSize="small" />, section: "resources" },
   { text: "Consumables", icon: <InventoryIcon fontSize="small" />, section: "resources" },
   { text: "Machinery", icon: <PrecisionManufacturingIcon fontSize="small" />, section: "resources" },
+  { 
+    text: "Rented Module", 
+    icon: <LocalShippingIcon fontSize="small" />, 
+    section: "resources",
+    subItems: [
+      { text: "Rented Logs", icon: <HistoryIcon fontSize="0.75rem" /> },
+      { text: "Add Rented Vehicle", icon: <AddCircleOutlineIcon fontSize="0.75rem" /> },
+    ]
+  },
   { text: "Diesel", icon: <LocalGasStationIcon fontSize="small" />, section: "resources" },
   { text: "Expenses", icon: <AccountBalanceWalletIcon fontSize="small" />, section: "finance" },
 ];
@@ -46,10 +61,22 @@ const pulse = keyframes`
   50% { opacity: 0.4; }
 `;
 
-export default function Layout({ children, onNavigate, currentPage, onToggleTheme, onLogout }) {
+export default function Layout({ children, onNavigate, currentPage, onToggleTheme, onLogout, onGenerateReport }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin";
+  const [openMenus, setOpenMenus] = React.useState({ "Rented Module": true });
+
+  // Filter menu items based on role
+  const visibleMenuItems = menuItems.filter(item => {
+    if (item.adminOnly && !isAdmin) return false;
+    return true;
+  });
+
+  const handleMenuClick = (text) => {
+    setOpenMenus(prev => ({ ...prev, [text]: !prev[text] }));
+  };
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
@@ -119,20 +146,54 @@ export default function Layout({ children, onNavigate, currentPage, onToggleThem
                 {section.label.toUpperCase()}
               </Typography>
               <List disablePadding>
-                {menuItems.filter(m => m.section === section.key).map((item) => {
+                {visibleMenuItems.filter(m => m.section === section.key).map((item) => {
                   const isSelected = currentPage === item.text;
+                  const hasSubItems = item.subItems && item.subItems.length > 0;
+                  const isOpen = openMenus[item.text];
+
                   return (
-                    <ListItemButton key={item.text} onClick={() => onNavigate(item.text)} selected={isSelected}
-                      sx={{
-                        borderRadius: "8px", mb: 0.5,
-                        "&.Mui-selected": { 
-                            bgcolor: isDark ? "rgba(249,115,22,0.12)" : "rgba(37,99,235,0.08)",
-                            "& .MuiListItemIcon-root": { color: "primary.main" }
-                        }
-                      }}>
-                      <ListItemIcon sx={{ minWidth: 34, color: isSelected ? "primary.main" : "text.secondary" }}>{item.icon}</ListItemIcon>
-                      <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: "0.8rem", color: isSelected ? "text.primary" : "text.secondary" }} />
-                    </ListItemButton>
+                    <React.Fragment key={item.text}>
+                      <ListItemButton 
+                        onClick={hasSubItems ? () => handleMenuClick(item.text) : () => onNavigate(item.text)} 
+                        selected={isSelected}
+                        sx={{
+                          borderRadius: "8px", mb: 0.5,
+                          "&.Mui-selected": { 
+                              bgcolor: isDark ? "rgba(249,115,22,0.12)" : "rgba(37,99,235,0.08)",
+                              "& .MuiListItemIcon-root": { color: "primary.main" }
+                          }
+                        }}>
+                        <ListItemIcon sx={{ minWidth: 34, color: isSelected ? "primary.main" : "text.secondary" }}>{item.icon}</ListItemIcon>
+                        <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: "0.8rem", color: isSelected ? "text.primary" : "text.secondary", fontWeight: isSelected || hasSubItems ? 700 : 500 }} />
+                        {hasSubItems && (isOpen ? <ExpandLess sx={{ fontSize: '1rem' }} /> : <ExpandMore sx={{ fontSize: '1rem' }} />)}
+                      </ListItemButton>
+
+                      {hasSubItems && (
+                        <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                          <List component="div" disablePadding sx={{ pl: 3 }}>
+                            {item.subItems.map((sub) => {
+                              const isSubSelected = currentPage === sub.text;
+                              return (
+                                <ListItemButton 
+                                  key={sub.text} 
+                                  onClick={() => onNavigate(sub.text)} 
+                                  selected={isSubSelected}
+                                  sx={{
+                                    borderRadius: "8px", mb: 0.5,
+                                    "&.Mui-selected": { 
+                                        bgcolor: isDark ? "rgba(249,115,22,0.1)" : "rgba(37,99,235,0.06)",
+                                        "& .MuiListItemIcon-root": { color: "primary.main" }
+                                    }
+                                  }}>
+                                  <ListItemIcon sx={{ minWidth: 28, color: isSubSelected ? "primary.main" : "text.secondary" }}>{sub.icon}</ListItemIcon>
+                                  <ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: "0.75rem", color: isSubSelected ? "text.primary" : "text.secondary" }} />
+                                </ListItemButton>
+                              );
+                            })}
+                          </List>
+                        </Collapse>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </List>
@@ -152,6 +213,13 @@ export default function Layout({ children, onNavigate, currentPage, onToggleThem
            </Typography>
 
            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+             {/* PDF Summary Report Button */}
+             <Tooltip title="Download Summary Report">
+               <IconButton onClick={onGenerateReport} sx={{ color: "text.primary" }}>
+                 <PictureAsPdfIcon />
+               </IconButton>
+             </Tooltip>
+
              {/* THE TOGGLE BUTTON */}
              <Tooltip title={`Switch to ${isDark ? 'Light' : 'Dark'} Mode`}>
                <IconButton onClick={onToggleTheme} sx={{ color: "text.primary" }}>

@@ -30,7 +30,6 @@ function MachineryDashboardView({ onNavigate }) {
 
   // Filter States
   const [search, setSearch] = useState('');
-  const [ownershipFilter, setOwnershipFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [serviceFilter, setServiceFilter] = useState('All');
@@ -54,18 +53,15 @@ function MachineryDashboardView({ onNavigate }) {
       const q = search.toLowerCase();
       if (!m.machineName?.toLowerCase().includes(q) && !m.machineCode?.toLowerCase().includes(q)) return false;
     }
-    if (ownershipFilter !== 'All' && m.ownershipType !== ownershipFilter) return false;
     if (typeFilter !== 'All' && m.machineType !== typeFilter) return false;
     if (statusFilter !== 'All' && m.status !== statusFilter) return false;
     if (serviceFilter !== 'All' && getServiceStatus(m) !== serviceFilter) return false;
     return true;
-  }), [machines, search, ownershipFilter, typeFilter, statusFilter, serviceFilter]);
+  }), [machines, search, typeFilter, statusFilter, serviceFilter]);
 
   const stats = useMemo(() => ({
     total: machines.length,
     active: machines.filter((m) => m.status === 'active').length,
-    owned: machines.filter((m) => m.ownershipType === 'owned').length,
-    rented: machines.filter((m) => m.ownershipType === 'rented').length,
     dueForService: machines.filter((m) => ['service_due', 'due_soon'].includes(getServiceStatus(m))).length,
     overdue: machines.filter((m) => getServiceStatus(m) === 'overdue').length,
   }), [machines]);
@@ -189,7 +185,6 @@ function MachineryDashboardView({ onNavigate }) {
         <StatsCards 
           stats={stats} 
           onFilterStatus={setStatusFilter}
-          onFilterOwnership={setOwnershipFilter}
           onFilterService={setServiceFilter}
         />
 
@@ -235,7 +230,6 @@ function MachineryDashboardView({ onNavigate }) {
         {/* Filters Section */}
         <MachineFilters
           search={search}                   setSearch={setSearch}
-          ownershipFilter={ownershipFilter} setOwnershipFilter={setOwnershipFilter}
           typeFilter={typeFilter}           setTypeFilter={setTypeFilter}
           statusFilter={statusFilter}       setStatusFilter={setStatusFilter}
           serviceFilter={serviceFilter}     setServiceFilter={setServiceFilter}
@@ -256,7 +250,7 @@ function MachineryDashboardView({ onNavigate }) {
             <Button 
                 variant="text" 
                 sx={{ mt: 3, fontWeight: 800 }} 
-                onClick={() => { setSearch(''); setStatusFilter('All'); setServiceFilter('All'); setTypeFilter('All'); setOwnershipFilter('All'); }}
+                onClick={() => { setSearch(''); setStatusFilter('All'); setServiceFilter('All'); setTypeFilter('All'); }}
             >
               Reset Terminal View
             </Button>

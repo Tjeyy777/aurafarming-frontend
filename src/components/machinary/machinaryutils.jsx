@@ -57,10 +57,6 @@ export const MACHINE_TYPES = [
   { value: 'other',         label: 'Other' },
 ];
 
-export const OWNERSHIP_TYPES = [
-  { value: 'owned',  label: 'Owned' },
-  { value: 'rented', label: 'Rented' },
-];
 
 export const FUEL_TYPES = [
   { value: 'diesel',   label: 'Diesel' },

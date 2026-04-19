@@ -119,13 +119,6 @@ export default function MachineCard({
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2.5 }}>
           <StatusChip status={machine.status} type="machine" />
           <StatusChip status={serviceStatus} type="service" />
-          <Typography variant="caption" sx={{ 
-            bgcolor: machine.ownershipType === 'owned' ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.info.main, 0.1),
-            color: machine.ownershipType === 'owned' ? 'success.main' : 'info.main',
-            px: 1, py: 0.25, borderRadius: 1, fontWeight: 600, textTransform: 'uppercase', fontSize: '0.62rem'
-          }}>
-            {machine.ownershipType}
-          </Typography>
         </Box>
 
         <Divider sx={{ mb: 2.5, borderStyle: 'dashed' }} />

@@ -20,6 +20,7 @@ import {
     MenuItem,
     Stack,
     TextField,
+    TablePagination,
     Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -45,6 +46,8 @@ export default function DieselPage() {
   } = useDiesel();
 
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
   const [filterDieselType, setFilterDieselType] = useState("all");
   const [filterDate, setFilterDate] = useState("");
   const [filterMachine, setFilterMachine] = useState("");
@@ -402,7 +405,9 @@ export default function DieselPage() {
       </Card>
 
       <Grid container spacing={2}>
-        {filteredEntries.map((entry) => (
+        {filteredEntries
+          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((entry) => (
           <Grid item xs={12} md={6} lg={4} key={entry._id}>
             <Card>
               <CardContent>
@@ -473,6 +478,20 @@ export default function DieselPage() {
           </Grid>
         ))}
       </Grid>
+
+      {/* Pagination */}
+      {filteredEntries.length > rowsPerPage && (
+        <TablePagination
+          component="div"
+          count={filteredEntries.length}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+          rowsPerPageOptions={[6, 12, 24, 48]}
+          sx={{ mt: 2 }}
+        />
+      )}
 
       {filteredEntries.length === 0 && (
         <Card sx={{ mt: 3 }}>
