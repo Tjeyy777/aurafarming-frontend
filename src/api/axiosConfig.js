@@ -7,13 +7,15 @@ const api = axios.create({
 });
 
 
-// Request Interceptor: Attach Token
+// Request Interceptor: Attach Token & Timezone Information
 api.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.headers['x-timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    config.headers['x-timezone-offset'] = new Date().getTimezoneOffset();
     return config;
   },
   (error) => Promise.reject(error)

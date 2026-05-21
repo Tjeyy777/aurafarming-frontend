@@ -44,8 +44,9 @@ import { useWeighbridge } from "../hooks/useWighbridge";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EMPTY_FORM = { vehicleNumber: "", driverName: "", emptyWeight: "", remarks: "" };
+const REMARKS_OPTIONS = ["baller", "quarry waste", "sea wall", "muck"];
 
-const TODAY_COLS = "50px 180px 160px 120px 120px 170px 170px 120px 100px 120px";
+const TODAY_COLS = "50px 150px 140px 110px 110px 140px 150px 150px 110px 90px 120px";
 const HISTORY_COLS = "180px 120px 130px 100px 160px 140px";
 const DAY_VIEW_COLS = "180px 150px 130px 130px 170px 170px 130px 110px";
 
@@ -54,6 +55,15 @@ const DAY_VIEW_COLS = "180px 150px 130px 130px 170px 170px 130px 110px";
 const fmtDateTime = (v) => (!v ? "—" : new Date(v).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }));
 const fmtDate = (v) => (!v ? "—" : new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }));
 const fmtWeight = (v) => (v == null || v === "" ? "—" : `${Number(v).toLocaleString()} kg`);
+
+const toLocalISOString = (dateOrStr) => {
+  if (!dateOrStr) return "";
+  const date = new Date(dateOrStr);
+  if (isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60 * 1000);
+  return localDate.toISOString().slice(0, 16);
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -279,8 +289,8 @@ export default function WeighbridgePage() {
       emptyWeight: row.emptyWeight ?? "",
       loadedWeight: row.loadedWeight ?? "",
       remarks: row.remarks || "",
-      entryTime: row.entryTime ? new Date(row.entryTime).toISOString().slice(0, 16) : "",
-      exitTime: row.exitTime ? new Date(row.exitTime).toISOString().slice(0, 16) : "",
+      entryTime: row.entryTime ? toLocalISOString(row.entryTime) : "",
+      exitTime: row.exitTime ? toLocalISOString(row.exitTime) : "",
     });
   };
 
@@ -396,12 +406,27 @@ export default function WeighbridgePage() {
                       <TextField label="Vehicle No." size="small" value={newRow.vehicleNumber} onChange={(e) => handleNewRowChange("vehicleNumber", e.target.value.toUpperCase())} />
                       <TextField label="Driver (Opt)" size="small" value={newRow.driverName} onChange={(e) => handleNewRowChange("driverName", e.target.value)} />
                       <TextField label="Empty (kg)" size="small" type="number" value={newRow.emptyWeight} onChange={(e) => handleNewRowChange("emptyWeight", e.target.value)} helperText={prevWeightHint || " "} />
-                      <TextField label="Remarks" size="small" value={newRow.remarks} onChange={(e) => handleNewRowChange("remarks", e.target.value)} />
+                      <Box />
+                      <TextField
+                        select
+                        label="Remarks"
+                        size="small"
+                        value={newRow.remarks}
+                        onChange={(e) => handleNewRowChange("remarks", e.target.value)}
+                        SelectProps={{ native: true }}
+                      >
+                        <option value=""></option>
+                        {REMARKS_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </TextField>
                       <Box /><Box /><Box /><Box />
                       <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddRow} sx={{ fontWeight: 700, borderRadius: "10px", height: 40, alignSelf: "center" }}>Add</Button>
                     </Box>
 
-                    <ColHeader cols={TODAY_COLS} headers={["Vehicle", "Driver", "Empty", "Loaded", "Entry Time", "Exit Time", "Net Weight", "Status", "Actions"]} showCheckbox isAllSelected={selectedIds.length > 0 && selectedIds.length === filteredTodayEntries.length} isIndeterminate={selectedIds.length > 0 && selectedIds.length < filteredTodayEntries.length} onSelectAll={handleSelectAll} />
+                    <ColHeader cols={TODAY_COLS} headers={["Vehicle", "Driver", "Empty", "Loaded", "Remarks", "Entry Time", "Exit Time", "Net Weight", "Status", "Actions"]} showCheckbox isAllSelected={selectedIds.length > 0 && selectedIds.length === filteredTodayEntries.length} isIndeterminate={selectedIds.length > 0 && selectedIds.length < filteredTodayEntries.length} onSelectAll={handleSelectAll} />
 
                     {todayLoading ? (
                       <Box sx={{ py: 8, textAlign: "center" }}><CircularProgress /></Box>
@@ -419,6 +444,20 @@ export default function WeighbridgePage() {
                                   <TextField size="small" value={editForm.driverName} onChange={(e) => setEditForm((p) => ({ ...p, driverName: e.target.value }))} />
                                   <TextField size="small" type="number" value={editForm.emptyWeight} onChange={(e) => setEditForm((p) => ({ ...p, emptyWeight: e.target.value }))} />
                                   <TextField size="small" type="number" value={editForm.loadedWeight} onChange={(e) => setEditForm((p) => ({ ...p, loadedWeight: e.target.value }))} />
+                                  <TextField
+                                    select
+                                    size="small"
+                                    value={editForm.remarks}
+                                    onChange={(e) => setEditForm((p) => ({ ...p, remarks: e.target.value }))}
+                                    SelectProps={{ native: true }}
+                                  >
+                                    <option value=""></option>
+                                    {REMARKS_OPTIONS.map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {opt}
+                                      </option>
+                                    ))}
+                                  </TextField>
                                   <TextField size="small" type="datetime-local" value={editForm.entryTime} onChange={(e) => setEditForm((p) => ({ ...p, entryTime: e.target.value }))} />
                                   <TextField size="small" type="datetime-local" value={editForm.exitTime} onChange={(e) => setEditForm((p) => ({ ...p, exitTime: e.target.value }))} />
                                   <RowCell sx={{ fontWeight: 800, color: "primary.main" }}>{fmtWeight(row.netWeight)}</RowCell>
@@ -434,6 +473,7 @@ export default function WeighbridgePage() {
                                   <RowCell>{row.driverName || "—"}</RowCell>
                                   <RowCell>{fmtWeight(row.emptyWeight)}</RowCell>
                                   <RowCell>{fmtWeight(row.loadedWeight)}</RowCell>
+                                  <RowCell>{row.remarks || "—"}</RowCell>
                                   <RowCell sx={{ fontSize: "0.78rem" }}>{fmtDateTime(row.entryTime)}</RowCell>
                                   <RowCell sx={{ fontSize: "0.78rem" }}>{fmtDateTime(row.exitTime)}</RowCell>
                                   <RowCell sx={{ fontWeight: 900, color: "primary.main" }}>{fmtWeight(row.netWeight)}</RowCell>
