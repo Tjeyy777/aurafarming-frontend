@@ -32,6 +32,9 @@ import {
 } from "@mui/material";
 import { useMemo, useState } from "react";
 import { useInventory } from "../hooks/useInventory";
+import ExportDialog, { ExportButton } from "./ExportDialog";
+import { generateExplosivesPDF } from "../utils/pdfGenerator";
+import { generateExplosivesExcel } from "../utils/excelGenerator";
 
 const categoryOptions = ["all", "explosive", "detonator", "fuse", "accessory", "other"];
 const unitOptions = ["kg", "pieces", "meter"];
@@ -65,6 +68,7 @@ export default function ExplosivesPage() {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
   const [detailsTab, setDetailsTab] = useState(0);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const [itemForm, setItemForm] = useState({
     name: "",
@@ -321,9 +325,12 @@ export default function ExplosivesPage() {
           </Typography>
         </Box>
 
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAddItem}>
-          Add Item
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <ExportButton onClick={() => setExportOpen(true)} />
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAddItem}>
+            Add Item
+          </Button>
+        </Stack>
       </Box>
 
       {/* Summary */}
@@ -951,6 +958,14 @@ export default function ExplosivesPage() {
           <Button onClick={() => setSelectedItem(null)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="Explosives"
+        onExportPDF={(period, customDate) => generateExplosivesPDF({ items, period, customDate })}
+        onExportExcel={(period, customDate) => generateExplosivesExcel({ items, period, customDate })}
+      />
     </Box>
   );
 }

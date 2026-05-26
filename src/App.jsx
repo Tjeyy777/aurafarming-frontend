@@ -1,5 +1,15 @@
-import React, { useState, useMemo } from "react";
-import { ThemeProvider, createTheme, Box, Container, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, MenuItem, TextField, Alert } from "@mui/material";
+import React, { useState, useMemo, useCallback } from "react";
+import {
+  ThemeProvider, createTheme, Box, Container, Typography,
+  Dialog, DialogTitle, DialogContent, DialogActions, Button,
+  MenuItem, TextField, Alert, Stack, Chip, CircularProgress,
+  ToggleButtonGroup, ToggleButton
+} from "@mui/material";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import DateRangeIcon from "@mui/icons-material/DateRange";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import TableChartIcon from "@mui/icons-material/TableChart";
 import { getDesignTokens } from "./theme";
 import Layout from "./components/Layout";
 import LoginPage from "./components/auth/LoginPage";
@@ -23,6 +33,13 @@ import { useConsumables } from "./hooks/useConsumables";
 import { useExpenses } from "./hooks/useExpenses";
 import { useDiesel } from "./hooks/useDiesel";
 import { useEmployees } from "./hooks/useEmployees";
+import { useMachines } from "./hooks/useMachinery";
+import { useWeighbridge } from "./hooks/useWighbridge";
+import { useAttendance } from "./hooks/useAttendence";
+
+// PDF & Excel Generators
+import { generateQuarryPDF, getDateRange } from "./utils/pdfGenerator";
+import { generateFullExcel } from "./utils/excelGenerator";
 
 // Pages that should use full viewport width (no Container constraint)
 const FULL_WIDTH_PAGES = ["Weighbridge"];
@@ -36,6 +53,8 @@ function App() {
   // PDF report state
   const [openReportDialog, setOpenReportDialog] = useState(false);
   const [reportPeriod, setReportPeriod] = useState("daily");
+  const [customDate, setCustomDate] = useState(new Date().toISOString().split("T")[0]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Data hooks for PDF
   const { items: explosiveItems } = useInventory();
@@ -43,6 +62,9 @@ function App() {
   const { expenses } = useExpenses();
   const { entries: dieselEntries } = useDiesel();
   const { employees } = useEmployees();
+  const { machines } = useMachines();
+  const { todayEntries } = useWeighbridge({ todayPage: 1, todayLimit: 500 });
+  const { getAttendanceByDate } = useAttendance();
 
   const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
   const toggleTheme = () => setMode((prev) => (prev === "light" ? "dark" : "light"));
@@ -53,136 +75,87 @@ function App() {
     setCurrentPage("Dashboard");
   };
 
-  // ─── Filter data by period ───
-  const getDateRange = () => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    let start;
-    const end = new Date(today);
-    end.setHours(23, 59, 59, 999);
+  // ─── Compute preview date range for display ───
+  const previewRange = useMemo(() => {
+    const { start, end } = getDateRange(reportPeriod, customDate);
+    const fmt = (d) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    return `${fmt(start)} — ${fmt(end)}`;
+  }, [reportPeriod, customDate]);
 
-    if (reportPeriod === "daily") {
-      start = today;
-    } else if (reportPeriod === "weekly") {
-      start = new Date(today);
-      start.setDate(start.getDate() - 7);
-    } else {
-      start = new Date(today.getFullYear(), today.getMonth(), 1);
+  // ─── Generate PDF ───
+  const handleGeneratePDF = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      // Fetch attendance data for the period
+      let attendanceRecords = [];
+      try {
+        const { start, end } = getDateRange(reportPeriod, customDate);
+        // Fetch attendance for each day in range
+        const days = [];
+        const cur = new Date(start);
+        while (cur <= end) {
+          days.push(cur.toISOString().split("T")[0]);
+          cur.setDate(cur.getDate() + 1);
+        }
+        const results = await Promise.all(days.map((d) => getAttendanceByDate(d)));
+        results.forEach((r) => {
+          if (r?.data) attendanceRecords.push(...r.data);
+        });
+      } catch (e) {
+        console.warn("Could not fetch attendance for PDF:", e);
+      }
+
+      // Use a small timeout to let the UI update with the loading state
+      await new Promise((r) => setTimeout(r, 100));
+
+      generateQuarryPDF({
+        period: reportPeriod,
+        customDate,
+        employees,
+        explosiveItems,
+        consumableItems,
+        expenses,
+        dieselEntries,
+        machines,
+        weighbridgeEntries: todayEntries,
+        attendanceRecords,
+        rentedLogs: [], // Rented logs are fetched via react-query inside the page, passing empty for now
+      });
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      alert("Failed to generate PDF. Check console for details.");
+    } finally {
+      setIsGenerating(false);
+      setOpenReportDialog(false);
     }
-    return { start, end };
-  };
+  }, [reportPeriod, customDate, employees, explosiveItems, consumableItems, expenses, dieselEntries, machines, todayEntries, getAttendanceByDate]);
 
-  const filterByDate = (arr, dateField = "createdAt") => {
-    const { start, end } = getDateRange();
-    return arr.filter(item => {
-      const d = new Date(item[dateField] || item.date || item.createdAt);
-      return d >= start && d <= end;
-    });
-  };
-
-  const handlePrintReport = () => {
-    const { start, end } = getDateRange();
-    const label = reportPeriod === "daily" ? "Daily" : reportPeriod === "weekly" ? "Weekly" : "Monthly";
-    const dateStr = `${start.toLocaleDateString()} — ${end.toLocaleDateString()}`;
-
-    const filteredExpenses = filterByDate(expenses, "date");
-    const filteredDiesel = filterByDate(dieselEntries, "date");
-
-    const totalExplosiveValue = explosiveItems.reduce((s, i) => s + i.currentStock * i.unitCost, 0);
-    const totalConsumableValue = consumableItems.reduce((s, i) => s + i.currentStock * i.unitCost, 0);
-    const totalExpenseAmount = filteredExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-    const totalDieselCost = filteredDiesel.reduce((s, e) => s + Number(e.totalCost || 0), 0);
-    const totalDieselLitres = filteredDiesel.reduce((s, e) => s + Number(e.litres || 0), 0);
-
-    const html = `
-      <html>
-      <head>
-        <title>Quarry Pro Suite — ${label} Report</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; color: #1a1a1a; }
-          h1 { font-size: 22px; margin-bottom: 4px; }
-          h2 { font-size: 16px; margin: 24px 0 8px; color: #f97316; border-bottom: 2px solid #f97316; padding-bottom: 4px; }
-          .subtitle { color: #666; font-size: 12px; margin-bottom: 20px; }
-          .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-          .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
-          .card .label { font-size: 11px; color: #888; text-transform: uppercase; }
-          .card .value { font-size: 18px; font-weight: 700; margin-top: 4px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-          th { background: #f3f4f6; text-align: left; padding: 8px; border: 1px solid #e5e7eb; font-weight: 600; }
-          td { padding: 8px; border: 1px solid #e5e7eb; }
-          .footer { margin-top: 40px; text-align: center; color: #999; font-size: 10px; }
-          @media print { body { padding: 15px; } }
-        </style>
-      </head>
-      <body>
-        <h1>QUARRY PRO SUITE</h1>
-        <p class="subtitle">${label} Summary Report &bull; ${dateStr} &bull; Generated: ${new Date().toLocaleString()}</p>
-
-        <div class="grid">
-          <div class="card"><div class="label">Total Employees</div><div class="value">${employees.length}</div></div>
-          <div class="card"><div class="label">Explosive Items</div><div class="value">${explosiveItems.length}</div></div>
-          <div class="card"><div class="label">Consumable Items</div><div class="value">${consumableItems.length}</div></div>
-          <div class="card"><div class="label">Period Expenses</div><div class="value">\u20b9${totalExpenseAmount.toLocaleString()}</div></div>
-        </div>
-
-        <h2>Explosives Inventory</h2>
-        <div class="grid">
-          <div class="card"><div class="label">Total Items</div><div class="value">${explosiveItems.length}</div></div>
-          <div class="card"><div class="label">Inventory Value</div><div class="value">\u20b9${totalExplosiveValue.toLocaleString()}</div></div>
-        </div>
-        <table>
-          <tr><th>Item</th><th>Category</th><th>Stock</th><th>Unit</th><th>Unit Cost</th><th>Value</th></tr>
-          ${explosiveItems.map(i => `<tr><td>${i.name}</td><td>${i.category}</td><td>${i.currentStock}</td><td>${i.unit}</td><td>\u20b9${i.unitCost}</td><td>\u20b9${(i.currentStock * i.unitCost).toLocaleString()}</td></tr>`).join('')}
-        </table>
-
-        <h2>Consumables Inventory</h2>
-        <div class="grid">
-          <div class="card"><div class="label">Total Items</div><div class="value">${consumableItems.length}</div></div>
-          <div class="card"><div class="label">Inventory Value</div><div class="value">\u20b9${totalConsumableValue.toLocaleString()}</div></div>
-        </div>
-        <table>
-          <tr><th>Item</th><th>Category</th><th>Stock</th><th>Unit</th><th>Unit Cost</th><th>Value</th></tr>
-          ${consumableItems.map(i => `<tr><td>${i.name}</td><td>${i.category}</td><td>${i.currentStock}</td><td>${i.unit}</td><td>\u20b9${i.unitCost}</td><td>\u20b9${(i.currentStock * i.unitCost).toLocaleString()}</td></tr>`).join('')}
-        </table>
-
-        <h2>Diesel (${label})</h2>
-        <div class="grid">
-          <div class="card"><div class="label">Total Litres</div><div class="value">${totalDieselLitres}</div></div>
-          <div class="card"><div class="label">Total Cost</div><div class="value">\u20b9${totalDieselCost.toLocaleString()}</div></div>
-          <div class="card"><div class="label">Entries</div><div class="value">${filteredDiesel.length}</div></div>
-        </div>
-        ${filteredDiesel.length > 0 ? `
-        <table>
-          <tr><th>Date</th><th>For</th><th>Litres</th><th>Rate/L</th><th>Total</th></tr>
-          ${filteredDiesel.map(e => `<tr><td>${new Date(e.date).toLocaleDateString()}</td><td>${e.dieselFor === 'machine' ? (e.machineId?.machineName || 'Machine') : e.expenseName}</td><td>${e.litres}</td><td>\u20b9${e.pricePerLitre}</td><td>\u20b9${e.totalCost}</td></tr>`).join('')}
-        </table>` : '<p style="color:#888;font-size:12px;">No diesel entries for this period.</p>'}
-
-        <h2>Expenses (${label})</h2>
-        <div class="grid">
-          <div class="card"><div class="label">Total Amount</div><div class="value">\u20b9${totalExpenseAmount.toLocaleString()}</div></div>
-          <div class="card"><div class="label">Entries</div><div class="value">${filteredExpenses.length}</div></div>
-        </div>
-        ${filteredExpenses.length > 0 ? `
-        <table>
-          <tr><th>Date</th><th>Expense</th><th>Amount</th><th>Notes</th></tr>
-          ${filteredExpenses.map(e => `<tr><td>${new Date(e.date).toLocaleDateString()}</td><td>${e.expenseName}</td><td>\u20b9${e.amount}</td><td>${e.notes || '\u2014'}</td></tr>`).join('')}
-        </table>` : '<p style="color:#888;font-size:12px;">No expenses for this period.</p>'}
-
-        <div class="footer">
-          <p>Quarry Pro Suite &bull; Auto-Generated Report &bull; ${new Date().toLocaleString()}</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 400);
-    setOpenReportDialog(false);
-  };
+  // ─── Generate Excel ───
+  const handleGenerateExcel = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      await new Promise((r) => setTimeout(r, 100));
+      generateFullExcel({
+        period: reportPeriod,
+        customDate,
+        employees,
+        explosiveItems,
+        consumableItems,
+        expenses,
+        dieselEntries,
+        machines,
+        weighbridgeEntries: todayEntries,
+        attendanceRecords: [],
+        rentedLogs: [],
+      });
+    } catch (err) {
+      console.error("Excel generation failed:", err);
+      alert("Failed to generate Excel. Check console.");
+    } finally {
+      setIsGenerating(false);
+      setOpenReportDialog(false);
+    }
+  }, [reportPeriod, customDate, employees, explosiveItems, consumableItems, expenses, dieselEntries, machines, todayEntries]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -252,31 +225,124 @@ function App() {
         </Box>
       </Layout>
 
-      {/* PDF Report Dialog */}
-      <Dialog open={openReportDialog} onClose={() => setOpenReportDialog(false)} fullWidth maxWidth="xs"
-        PaperProps={{ sx: { borderRadius: 4 } }}
+      {/* ═══ PDF Report Dialog ═══ */}
+      <Dialog
+        open={openReportDialog}
+        onClose={() => !isGenerating && setOpenReportDialog(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 4, overflow: "visible" } }}
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>Generate Summary Report</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '10px !important' }}>
-          <Alert severity="info" sx={{ fontSize: 13 }}>
-            This will generate a PDF with data from all modules — Explosives, Consumables, Diesel, Expenses, and Employees.
+        <DialogTitle sx={{ fontWeight: 900, pb: 0.5, fontSize: "1.3rem" }}>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <PictureAsPdfIcon color="error" />
+            <span>Generate Summary Report</span>
+          </Stack>
+        </DialogTitle>
+
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2.5, pt: "16px !important" }}>
+          <Alert severity="info" sx={{ fontSize: 13, borderRadius: 2 }}>
+            This PDF will include data from <strong>all modules</strong> — Employees, Attendance, Weighbridge, Explosives, Consumables, Machinery, Diesel, Expenses &amp; Rented Logs.
           </Alert>
+
+          {/* Period Selector */}
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", mb: 1, display: "block", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              Report Period
+            </Typography>
+            <ToggleButtonGroup
+              value={reportPeriod}
+              exclusive
+              onChange={(_, v) => v && setReportPeriod(v)}
+              fullWidth
+              sx={{
+                "& .MuiToggleButton-root": {
+                  py: 1.5,
+                  fontWeight: 700,
+                  textTransform: "none",
+                  borderRadius: "12px !important",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  mx: 0.5,
+                  "&.Mui-selected": {
+                    bgcolor: "primary.main",
+                    color: "#fff",
+                    "&:hover": { bgcolor: "primary.dark" },
+                  },
+                },
+              }}
+            >
+              <ToggleButton value="daily">
+                <CalendarTodayIcon sx={{ fontSize: 18, mr: 1 }} /> Day
+              </ToggleButton>
+              <ToggleButton value="weekly">
+                <DateRangeIcon sx={{ fontSize: 18, mr: 1 }} /> Week
+              </ToggleButton>
+              <ToggleButton value="monthly">
+                <CalendarMonthIcon sx={{ fontSize: 18, mr: 1 }} /> Month
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
+          {/* Date Picker */}
           <TextField
-            select
-            label="Report Period"
-            value={reportPeriod}
-            onChange={(e) => setReportPeriod(e.target.value)}
+            type="date"
+            label={
+              reportPeriod === "daily"
+                ? "Select Date"
+                : reportPeriod === "weekly"
+                ? "Pick any day in the week"
+                : "Pick any day in the month"
+            }
+            value={customDate}
+            onChange={(e) => setCustomDate(e.target.value)}
             fullWidth
-          >
-            <MenuItem value="daily">Daily (Today)</MenuItem>
-            <MenuItem value="weekly">Weekly (Last 7 days)</MenuItem>
-            <MenuItem value="monthly">Monthly (This month)</MenuItem>
-          </TextField>
+            InputLabelProps={{ shrink: true }}
+            sx={{ "& fieldset": { borderRadius: "12px" } }}
+          />
+
+          {/* Preview */}
+          <Box sx={{ p: 2, borderRadius: 3, bgcolor: "action.hover", border: "1px dashed", borderColor: "divider" }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Date Range Preview
+            </Typography>
+            <Typography variant="body1" sx={{ fontWeight: 800, mt: 0.5, color: "primary.main" }}>
+              {previewRange}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Chip
+                label={reportPeriod === "daily" ? "Single Day" : reportPeriod === "weekly" ? "Full Week (Mon–Sun)" : "Full Month"}
+                size="small"
+                color="primary"
+                variant="outlined"
+                sx={{ fontWeight: 700 }}
+              />
+            </Stack>
+          </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={() => setOpenReportDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handlePrintReport} sx={{ borderRadius: 2, fontWeight: 700 }}>
-            Generate PDF
+
+        <DialogActions sx={{ p: 2.5, pt: 1 }}>
+          <Button onClick={() => setOpenReportDialog(false)} disabled={isGenerating} sx={{ fontWeight: 700 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="outlined"
+            color="success"
+            onClick={handleGenerateExcel}
+            disabled={isGenerating}
+            startIcon={isGenerating ? <CircularProgress size={18} /> : <TableChartIcon />}
+            sx={{ borderRadius: 2, fontWeight: 700 }}
+          >
+            Excel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleGeneratePDF}
+            disabled={isGenerating}
+            startIcon={isGenerating ? <CircularProgress size={18} color="inherit" /> : <PictureAsPdfIcon />}
+            sx={{ borderRadius: 2, fontWeight: 700, px: 3 }}
+          >
+            {isGenerating ? "Generating..." : "Download PDF"}
           </Button>
         </DialogActions>
       </Dialog>

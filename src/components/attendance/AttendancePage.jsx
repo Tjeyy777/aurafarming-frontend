@@ -11,6 +11,9 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import DailyTab from "./DailyTab";
 import HistoryTab from "./HistoryTab";
 import AttendanceToast from "./AttendanceToast";
+import ExportDialog, { ExportButton } from "../ExportDialog";
+import { generateAttendancePDF } from "../../utils/pdfGenerator";
+import { generateAttendanceExcel } from "../../utils/excelGenerator";
 
 export default function AttendancePage() {
   const theme = useTheme();
@@ -33,6 +36,7 @@ export default function AttendancePage() {
   // ─── Toast ───
   const [toast, setToast] = useState({ open: false, type: "success", message: "" });
   const showToast = (type, message) => setToast({ open: true, type, message });
+  const [exportOpen, setExportOpen] = useState(false);
 
   // ─── Derive parent roles and sub-roles ───
   const parentRoles = useMemo(() => roles.filter((r) => !r.parentRole), [roles]);
@@ -260,6 +264,8 @@ export default function AttendancePage() {
             </IconButton>
           </Tooltip>
 
+          <ExportButton onClick={() => setExportOpen(true)} />
+
           {/* Tab Switcher */}
           <Paper sx={{ p: 0.5, borderRadius: 3, bgcolor: "action.hover", display: "inline-flex" }} elevation={0}>
             <Tabs
@@ -313,6 +319,34 @@ export default function AttendancePage() {
         onClose={() => setToast({ ...toast, open: false })}
         type={toast.type}
         message={toast.message}
+      />
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="Attendance"
+        onExportPDF={async (period, customDate) => {
+          const { getDateRange } = await import("../../utils/pdfGenerator");
+          const { start, end } = getDateRange(period, customDate);
+          const days = [];
+          const cur = new Date(start);
+          while (cur <= end) { days.push(cur.toISOString().split("T")[0]); cur.setDate(cur.getDate() + 1); }
+          const results = await Promise.all(days.map((d) => getAttendanceByDate(d)));
+          const records = [];
+          results.forEach((r) => { if (r?.data) records.push(...r.data); });
+          generateAttendancePDF({ records, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          const { getDateRange } = await import("../../utils/pdfGenerator");
+          const { start, end } = getDateRange(period, customDate);
+          const days = [];
+          const cur = new Date(start);
+          while (cur <= end) { days.push(cur.toISOString().split("T")[0]); cur.setDate(cur.getDate() + 1); }
+          const results = await Promise.all(days.map((d) => getAttendanceByDate(d)));
+          const records = [];
+          results.forEach((r) => { if (r?.data) records.push(...r.data); });
+          generateAttendanceExcel({ records, period, customDate });
+        }}
       />
     </Box>
   );

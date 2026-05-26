@@ -11,6 +11,7 @@ import ScaleIcon from "@mui/icons-material/Scale";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   Alert,
   Box,
@@ -40,6 +41,9 @@ import {
 } from "@mui/material";
 import { useMemo, useState } from "react";
 import { useWeighbridge } from "../hooks/useWighbridge";
+import ExportDialog, { ExportButton } from "./ExportDialog";
+import { generateWeighbridgePDF } from "../utils/pdfGenerator";
+import { generateWeighbridgeExcel } from "../utils/excelGenerator";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -215,6 +219,7 @@ export default function WeighbridgePage() {
 
   const [confirmDialog, setConfirmDialog] = useState({ open: false, ids: [] });
   const [completeDialog, setCompleteDialog] = useState({ open: false, row: null });
+  const [exportOpen, setExportOpen] = useState(false);
 
   const {
     todayEntries, todayPagination, todayLoading,
@@ -361,6 +366,7 @@ export default function WeighbridgePage() {
             <InputBase placeholder="Search..." sx={{ flex: 1, fontSize: "0.85rem" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </Paper>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={refetchToday} sx={{ borderRadius: "12px", fontWeight: 700 }}>Refresh</Button>
+          <ExportButton onClick={() => setExportOpen(true)} />
         </Stack>
       </Stack>
 
@@ -504,8 +510,24 @@ export default function WeighbridgePage() {
 
       {tab === 1 && (
         <Fade in>
-          <Card sx={{ borderRadius: "16px" }}>
-            <CardContent sx={{ p: "24px !important" }}>
+          <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>Historical Summary</Typography>
+                <TextField
+                  type="date"
+                  size="small"
+                  label="Jump to Date"
+                  InputLabelProps={{ shrink: true }}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      openDayView(e.target.value);
+                    }
+                  }}
+                  sx={{ bgcolor: isDark ? "rgba(255,255,255,0.02)" : "#fff", borderRadius: "8px", '& fieldset': { borderRadius: '8px' } }}
+                />
+            </Stack>
+            <Card sx={{ borderRadius: "16px" }}>
+              <CardContent sx={{ p: "24px !important" }}>
               {historyLoading ? (
                 <Box sx={{ py: 8, textAlign: "center" }}><CircularProgress /></Box>
               ) : (
@@ -525,11 +547,101 @@ export default function WeighbridgePage() {
               )}
             </CardContent>
           </Card>
+          </Box>
         </Fade>
       )}
 
       <ConfirmDialog open={confirmDialog.open} title="Delete Entries" count={confirmDialog.ids.length} onConfirm={handleDeleteConfirm} onCancel={() => setConfirmDialog({ open: false, ids: [] })} />
       <CompleteDialog open={completeDialog.open} row={completeDialog.row} onConfirm={(w) => completeEntry({ id: completeDialog.row._id, payload: { loadedWeight: w } }).then(() => setCompleteDialog({ open: false, row: null }))} onCancel={() => setCompleteDialog({ open: false, row: null })} />
+
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: "20px", height: "85vh", backgroundImage: "none" } }}>
+        <Box sx={{ p: 3, borderBottom: `1px solid ${theme.palette.divider}`, bgcolor: isDark ? "rgba(255,255,255,0.02)" : "#f8faff", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+              <Box sx={{ p: 1.2, borderRadius: "12px", bgcolor: "primary.main", display: "flex", color: "#fff", boxShadow: "0 4px 14px rgba(0,0,0,0.15)" }}>
+                  <CalendarMonthIcon />
+              </Box>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>Entries for {fmtDate(selectedDate)}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.5 }}>View detailed logs for the selected date.</Typography>
+              </Box>
+          </Stack>
+          <IconButton onClick={() => setViewDialogOpen(false)} sx={{ bgcolor: isDark ? "rgba(255,255,255,0.05)" : "#fff", border: `1px solid ${theme.palette.divider}`, borderRadius: "10px" }}><CloseIcon /></IconButton>
+        </Box>
+        <DialogContent sx={{ p: 0, bgcolor: isDark ? "transparent" : "#fdfdfd" }}>
+          {selectedDayLoading ? (
+             <Box sx={{ py: 10, textAlign: "center" }}><CircularProgress /></Box>
+          ) : selectedDayEntries?.length === 0 ? (
+             <Box sx={{ py: 10, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                <Box sx={{ p: 2, borderRadius: "50%", bgcolor: isDark ? "rgba(255,255,255,0.05)" : "#f0f4f8" }}>
+                    <LocalShippingIcon sx={{ fontSize: 40, color: "text.disabled" }} />
+                </Box>
+                <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 700 }}>No entries found for this date.</Typography>
+             </Box>
+          ) : (
+            <Box sx={{ p: 3 }}>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                 <Grid item xs={12} sm={6}>
+                     <Card variant="outlined" sx={{ borderRadius: "16px", bgcolor: "transparent", borderStyle: "dashed" }}>
+                         <CardContent sx={{ p: "16px !important", display: "flex", alignItems: "center", gap: 2 }}>
+                             <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: "success.main", color: "#fff" }}><DirectionsCarIcon /></Box>
+                             <Box>
+                                 <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>Total Trips</Typography>
+                                 <Typography variant="h5" sx={{ fontWeight: 900, color: "text.primary" }}>{selectedDaySummary?.totalTrips || 0}</Typography>
+                             </Box>
+                         </CardContent>
+                     </Card>
+                 </Grid>
+                 <Grid item xs={12} sm={6}>
+                     <Card variant="outlined" sx={{ borderRadius: "16px", bgcolor: "transparent", borderStyle: "dashed" }}>
+                         <CardContent sx={{ p: "16px !important", display: "flex", alignItems: "center", gap: 2 }}>
+                             <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: "primary.main", color: "#fff" }}><ScaleIcon /></Box>
+                             <Box>
+                                 <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>Total Net Weight</Typography>
+                                 <Typography variant="h5" sx={{ fontWeight: 900, color: "primary.main" }}>{fmtWeight(selectedDaySummary?.totalNetWeight || 0)}</Typography>
+                             </Box>
+                         </CardContent>
+                     </Card>
+                 </Grid>
+              </Grid>
+
+              <Box sx={{ overflowX: "auto", border: `1px solid ${theme.palette.divider}`, borderRadius: "14px", bgcolor: isDark ? "rgba(255,255,255,0.02)" : "#fff" }}>
+                <Box sx={{ minWidth: 1100, p: 1 }}>
+                  <ColHeader cols={DAY_VIEW_COLS} headers={["Vehicle", "Driver", "Empty", "Loaded", "Entry Time", "Exit Time", "Net Weight", "Status"]} />
+                  <Stack spacing={0.5}>
+                    {selectedDayEntries?.map((row, i) => (
+                      <Box key={row._id} sx={{ ...rowSx(false, false), gridTemplateColumns: DAY_VIEW_COLS, py: 1.2, px: 2, borderRadius: "10px", border: "none", borderBottom: i < selectedDayEntries.length - 1 ? `1px solid ${theme.palette.divider}` : "none", bgcolor: "transparent", '&:hover': { bgcolor: isDark ? "rgba(255,255,255,0.04)" : "#f8faff" } }}>
+                        <RowCell sx={{ fontWeight: 800 }}>{row.vehicleNumber}</RowCell>
+                        <RowCell sx={{ color: row.driverName ? "text.primary" : "text.disabled" }}>{row.driverName || "Unknown"}</RowCell>
+                        <RowCell>{fmtWeight(row.emptyWeight)}</RowCell>
+                        <RowCell>{fmtWeight(row.loadedWeight)}</RowCell>
+                        <RowCell sx={{ fontSize: "0.8rem", color: "text.secondary" }}>{fmtDateTime(row.entryTime)}</RowCell>
+                        <RowCell sx={{ fontSize: "0.8rem", color: "text.secondary" }}>{fmtDateTime(row.exitTime)}</RowCell>
+                        <RowCell sx={{ fontWeight: 900, color: "primary.main", fontSize: "0.95rem" }}>{fmtWeight(row.netWeight)}</RowCell>
+                        <Box>
+                          <Chip size="small" label={row.status} sx={{ fontWeight: 700, borderRadius: "6px", textTransform: "uppercase", fontSize: "0.65rem", bgcolor: row.status === "completed" ? "success.main" : "warning.main", color: "#fff" }} />
+                        </Box>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        {selectedDayPagination?.totalPages > 1 && (
+            <DialogActions sx={{ p: 2, justifyContent: "center", borderTop: `1px solid ${theme.palette.divider}`, bgcolor: isDark ? "rgba(255,255,255,0.02)" : "#f8faff" }}>
+                <Pagination page={selectedDayPage} count={selectedDayPagination.totalPages} onChange={(_, v) => setSelectedDayPage(v)} color="primary" variant="outlined" shape="rounded" />
+            </DialogActions>
+        )}
+      </Dialog>
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="Weighbridge"
+        onExportPDF={(period, customDate) => generateWeighbridgePDF({ entries: todayEntries, period, customDate })}
+        onExportExcel={(period, customDate) => generateWeighbridgeExcel({ entries: todayEntries, period, customDate })}
+      />
     </Box>
   );
 }

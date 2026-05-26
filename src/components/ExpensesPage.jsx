@@ -23,6 +23,9 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useExpenses } from "../hooks/useExpenses";
+import ExportDialog, { ExportButton } from "./ExportDialog";
+import { generateExpensesPDF } from "../utils/pdfGenerator";
+import { generateExpensesExcel } from "../utils/excelGenerator";
 
 const formatLabel = (value = "") =>
   value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -56,6 +59,7 @@ export default function ExpensesPage() {
 
   const [editingExpense, setEditingExpense] = useState(null);
   const [error, setError] = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -248,6 +252,7 @@ export default function ExpensesPage() {
           <Button variant="outlined" startIcon={<ReceiptLongIcon />} onClick={() => setOpenReportsDialog(true)}>
             Reports
           </Button>
+          <ExportButton onClick={() => setExportOpen(true)} />
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>
             Add Expense
           </Button>
@@ -620,11 +625,17 @@ export default function ExpensesPage() {
         </DialogContent>
 
         <DialogActions sx={{ p: 2 }}>
-          <Button variant="outlined">Export PDF</Button>
-          <Button variant="outlined">Export Excel</Button>
           <Button onClick={() => setOpenReportsDialog(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="Expenses"
+        onExportPDF={(period, customDate) => generateExpensesPDF({ expenses, period, customDate })}
+        onExportExcel={(period, customDate) => generateExpensesExcel({ expenses, period, customDate })}
+      />
     </Box>
   );
 }

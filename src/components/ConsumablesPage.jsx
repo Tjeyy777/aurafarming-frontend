@@ -29,6 +29,9 @@ import {
 } from "@mui/material";
 import { useMemo, useState } from "react";
 import { useConsumables } from "../hooks/useConsumables";
+import ExportDialog, { ExportButton } from "./ExportDialog";
+import { generateConsumablesPDF } from "../utils/pdfGenerator";
+import { generateConsumablesExcel } from "../utils/excelGenerator";
 
 const categoryOptions = [
   "all",
@@ -67,6 +70,7 @@ export default function ConsumablesPage() {
   const [editingId, setEditingId] = useState(null);
   const [detailsTab, setDetailsTab] = useState(0);
   const [error, setError] = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
 
   const [itemForm, setItemForm] = useState({
     name: "",
@@ -287,14 +291,17 @@ export default function ConsumablesPage() {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenAddItem}
-          sx={{ bgcolor: "#0ea5e9", "&:hover": { bgcolor: "#0284c7" } }}
-        >
-          Add Item
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <ExportButton onClick={() => setExportOpen(true)} />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAddItem}
+            sx={{ bgcolor: "#0ea5e9", "&:hover": { bgcolor: "#0284c7" } }}
+          >
+            Add Item
+          </Button>
+        </Stack>
       </Box>
 
       {/* Summary Cards */}
@@ -877,6 +884,14 @@ export default function ConsumablesPage() {
           <Button onClick={() => setSelectedItem(null)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="Consumables"
+        onExportPDF={(period, customDate) => generateConsumablesPDF({ items, period, customDate })}
+        onExportExcel={(period, customDate) => generateConsumablesExcel({ items, period, customDate })}
+      />
     </Box>
   );
 }

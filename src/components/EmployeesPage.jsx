@@ -32,6 +32,9 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import { useEmployees } from "../hooks/useEmployees";
+import ExportDialog, { ExportButton } from "./ExportDialog";
+import { generateEmployeesPDF } from "../utils/pdfGenerator";
+import { generateEmployeesExcel } from "../utils/excelGenerator";
 
 export default function EmployeesPage() {
   const theme = useTheme();
@@ -61,6 +64,7 @@ export default function EmployeesPage() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("active"); // "all", "active", "inactive"
+  const [exportOpen, setExportOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     employeeCode: "", name: "", phone: "", 
@@ -245,6 +249,8 @@ export default function EmployeesPage() {
           >
             Add Staff
           </Button>
+
+          <ExportButton onClick={() => setExportOpen(true)} />
         </Stack>
       </Stack>
 
@@ -651,6 +657,14 @@ export default function EmployeesPage() {
           </Box>
         </DialogContent>
       </Dialog>
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="Employees"
+        onExportPDF={(period, customDate) => generateEmployeesPDF({ employees, period, customDate })}
+        onExportExcel={(period, customDate) => generateEmployeesExcel({ employees, period, customDate })}
+      />
     </Box>
   );
 }

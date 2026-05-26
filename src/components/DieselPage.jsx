@@ -25,6 +25,9 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useDiesel } from "../hooks/useDiesel";
+import ExportDialog, { ExportButton } from "./ExportDialog";
+import { generateDieselPDF } from "../utils/pdfGenerator";
+import { generateDieselExcel } from "../utils/excelGenerator";
 
 const dieselTypeOptions = ["all", "machine", "other"];
 
@@ -59,6 +62,7 @@ export default function DieselPage() {
 
   const [editingEntry, setEditingEntry] = useState(null);
   const [error, setError] = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     dieselFor: "machine",
@@ -282,6 +286,7 @@ export default function DieselPage() {
           <Button variant="outlined" startIcon={<ReceiptLongIcon />} onClick={() => setOpenReportsDialog(true)}>
             Reports
           </Button>
+          <ExportButton onClick={() => setExportOpen(true)} />
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>
             Add Diesel Entry
           </Button>
@@ -786,11 +791,17 @@ export default function DieselPage() {
         </DialogContent>
 
         <DialogActions sx={{ p: 2 }}>
-          <Button variant="outlined">Export PDF</Button>
-          <Button variant="outlined">Export Excel</Button>
           <Button onClick={() => setOpenReportsDialog(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="Diesel"
+        onExportPDF={(period, customDate) => generateDieselPDF({ entries, period, customDate })}
+        onExportExcel={(period, customDate) => generateDieselExcel({ entries, period, customDate })}
+      />
     </Box>
   );
 }

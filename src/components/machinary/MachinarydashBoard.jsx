@@ -22,6 +22,9 @@ import { DeleteConfirmModal, ServiceDoneModal } from './Modals';
 import MachineDetail from './Machinedetail';
 import ServiceAlerts from './Servicealerts';
 import MachineryReports from './Machinaryreports';
+import ExportDialog, { ExportButton } from '../ExportDialog';
+import { generateMachineryPDF } from '../../utils/pdfGenerator';
+import { generateMachineryExcel } from '../../utils/excelGenerator';
 
 function MachineryDashboardView({ onNavigate }) {
   const theme = useTheme();
@@ -40,6 +43,7 @@ function MachineryDashboardView({ onNavigate }) {
   const [addLogMachine, setAddLogMachine] = useState(null);
   const [deleteMachineTarget, setDeleteMachineTarget] = useState(null);
   const [serviceMachineTarget, setServiceMachineTarget] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const { data: machines = [], isLoading, error } = useMachines();
   const createMachine = useCreateMachine();
@@ -169,6 +173,7 @@ function MachineryDashboardView({ onNavigate }) {
           >
             Alerts
           </Button>
+          <ExportButton onClick={() => setExportOpen(true)} />
           <Button 
             variant="contained" 
             disableElevation
@@ -315,6 +320,14 @@ function MachineryDashboardView({ onNavigate }) {
         onConfirm={handleMarkServiceDone}
         onCancel={() => setServiceMachineTarget(null)}
         loading={markServiceDone.isPending}
+      />
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="Machinery"
+        onExportPDF={(period, customDate) => generateMachineryPDF({ machines, period, customDate })}
+        onExportExcel={(period, customDate) => generateMachineryExcel({ machines, period, customDate })}
       />
     </Box>
   );

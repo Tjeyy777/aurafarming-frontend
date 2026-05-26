@@ -24,6 +24,9 @@ import {
   useDeleteRentedLog,
   useCreateTrip,
 } from '../../hooks/useRentedMachinery';
+import ExportDialog, { ExportButton } from '../ExportDialog';
+import { generateRentedLogsPDF } from '../../utils/pdfGenerator';
+import { generateRentedLogsExcel } from '../../utils/excelGenerator';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -156,6 +159,7 @@ export default function RentedMachineryPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [exportOpen, setExportOpen] = useState(false);
 
   const [newRow, setNewRow] = useState({
     vehicleId: '',
@@ -347,6 +351,7 @@ export default function RentedMachineryPage() {
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={refetch} sx={{ borderRadius: 2, fontWeight: 700 }}>
             Refresh
           </Button>
+          <ExportButton onClick={() => setExportOpen(true)} />
         </Stack>
       </Stack>
 
@@ -700,6 +705,14 @@ export default function RentedMachineryPage() {
           </Box>
         </Box>
       </Paper>
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="Rented Machinery"
+        onExportPDF={(period, customDate) => generateRentedLogsPDF({ logs, period, customDate })}
+        onExportExcel={(period, customDate) => generateRentedLogsExcel({ logs, period, customDate })}
+      />
     </Box>
   );
 }
