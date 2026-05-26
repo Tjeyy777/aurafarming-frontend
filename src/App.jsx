@@ -26,6 +26,7 @@ import ExpensesPage from "./components/ExpensesPage";
 import WeighbridgePage from "./components/WeighbridgePage";
 import RentedMachineryPage from "./components/RentedMachinery/RentedMachineryPage";
 import RentedVehicleMasterPage from "./components/RentedMachinery/RentedVehicalMasterPage";
+import TeamManagementPage from "./components/TeamManagementPage";
 
 // Hooks for PDF summary
 import { useInventory } from "./hooks/useInventory";
@@ -157,6 +158,14 @@ function App() {
     }
   }, [reportPeriod, customDate, employees, explosiveItems, consumableItems, expenses, dieselEntries, machines, todayEntries]);
 
+  const handleNavigate = useCallback((page) => {
+    if (!isAdmin && (page === "Dashboard" || page === "Team Management")) {
+      setCurrentPage("Employees");
+      return;
+    }
+    setCurrentPage(page);
+  }, [isAdmin]);
+
   const renderPage = () => {
     switch (currentPage) {
       case "Employees":   return <EmployeesPage />;
@@ -169,6 +178,7 @@ function App() {
       case "Weighbridge": return <WeighbridgePage />;
       case "Rented Logs": return <RentedMachineryPage />;
       case "Add Rented Vehicle": return <RentedVehicleMasterPage />;
+      case "Team Management": return <TeamManagementPage />;
       default:
         return (
           <Box sx={{ py: 8, textAlign: "center" }}>
@@ -194,7 +204,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <Layout
-        onNavigate={setCurrentPage}
+        onNavigate={handleNavigate}
         currentPage={currentPage}
         onToggleTheme={toggleTheme}
         onLogout={handleLogout}

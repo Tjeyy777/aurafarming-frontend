@@ -21,8 +21,7 @@ import {
   Person as PersonIcon,
   Visibility,
   VisibilityOff,
-  LogoDev,
-  AdminPanelSettings as AdminIcon
+  LogoDev
 } from '@mui/icons-material';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -32,8 +31,7 @@ const LoginPage = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
-    role: 'staff'
+    password: ''
   });
 
   const { login, register, isLoading, error, clearError } = useAuthStore();
@@ -52,7 +50,7 @@ const LoginPage = () => {
     if (activeTab === 0) {
       await login(formData.email, formData.password);
     } else {
-      await register(formData.name, formData.email, formData.password, formData.role);
+      await register(formData.name, formData.email, formData.password, "admin");
     }
   };
 
@@ -162,28 +160,6 @@ const LoginPage = () => {
                     ),
                   }}
                 />
-              )}
-
-              {activeTab === 1 && (
-                <TextField
-                  fullWidth
-                  select
-                  name="role"
-                  label="Account Role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  sx={{ mb: 2.5 }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <AdminIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                >
-                  <MenuItem value="admin">Admin — Full access, dashboard & reports</MenuItem>
-                  <MenuItem value="staff">Staff — Operations access only</MenuItem>
-                </TextField>
               )}
 
               <TextField

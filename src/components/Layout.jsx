@@ -14,6 +14,7 @@ import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import PeopleIcon from "@mui/icons-material/People";
 import PrecisionManufacturingIcon from "@mui/icons-material/PrecisionManufacturing";
+import GroupsIcon from "@mui/icons-material/Groups";
 import ScaleIcon from "@mui/icons-material/Scale";
 import WarningIcon from "@mui/icons-material/Warning";
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -47,6 +48,7 @@ const menuItems = [
   },
   { text: "Diesel", icon: <LocalGasStationIcon fontSize="small" />, section: "resources" },
   { text: "Expenses", icon: <AccountBalanceWalletIcon fontSize="small" />, section: "finance" },
+  { text: "Team Management", icon: <GroupsIcon fontSize="small" />, section: "admin", adminOnly: true },
 ];
 
 const sections = [
@@ -54,6 +56,7 @@ const sections = [
   { key: "operations", label: "Operations" },
   { key: "resources", label: "Resources" },
   { key: "finance", label: "Finance" },
+  { key: "admin", label: "Admin" },
 ];
 
 const pulse = keyframes`
@@ -140,13 +143,16 @@ export default function Layout({ children, onNavigate, currentPage, onToggleThem
         <Divider sx={{ mx: 2, opacity: 0.5 }} />
 
         <Box sx={{ px: 2, py: 2, flex: 1 }}>
-          {sections.map((section) => (
+          {sections.map((section) => {
+            const sectionItems = visibleMenuItems.filter(m => m.section === section.key);
+            if (sectionItems.length === 0) return null;
+            return (
             <Box key={section.key} sx={{ mb: 2 }}>
               <Typography sx={{ fontSize: "0.6rem", color: "text.secondary", px: 1.5, mb: 1, fontWeight: 700 }}>
                 {section.label.toUpperCase()}
               </Typography>
               <List disablePadding>
-                {visibleMenuItems.filter(m => m.section === section.key).map((item) => {
+                {sectionItems.map((item) => {
                   const isSelected = currentPage === item.text;
                   const hasSubItems = item.subItems && item.subItems.length > 0;
                   const isOpen = openMenus[item.text];
@@ -198,7 +204,8 @@ export default function Layout({ children, onNavigate, currentPage, onToggleThem
                 })}
               </List>
             </Box>
-          ))}
+          );
+          })}
         </Box>
       </Drawer>
 

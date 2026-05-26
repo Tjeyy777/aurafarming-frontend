@@ -295,9 +295,22 @@ export default function RentedMachineryPage() {
   };
 
   const handleCreateTrip = async (parentLog) => {
+    let newOpeningMeter = parentLog.closingMeter || parentLog.openingMeter;
+    
+    if (parentLog.children && parentLog.children.length > 0) {
+      let maxMeter = Number(newOpeningMeter) || 0;
+      parentLog.children.forEach(trip => {
+        const tripMax = Math.max(Number(trip.closingMeter) || 0, Number(trip.openingMeter) || 0);
+        if (tripMax > maxMeter) {
+          maxMeter = tripMax;
+        }
+      });
+      newOpeningMeter = maxMeter;
+    }
+
     const res = await createTrip.mutateAsync({
       parentLogId: parentLog._id,
-      openingMeter: parentLog.closingMeter || parentLog.openingMeter,
+      openingMeter: newOpeningMeter,
       date: new Date().toISOString().split('T')[0],
     });
 
@@ -610,7 +623,7 @@ export default function RentedMachineryPage() {
                       {/* Child Trip Rows */}
                       <Collapse in={isExpanded && hasChildren}>
                         <Stack spacing={0.75} sx={{ mt: 0.75 }}>
-                          {log.children?.map((child) => {
+                          {log.children?.slice().reverse().map((child) => {
                             const isChildEditing = editingId === child._id;
                             return (
                               <Box key={child._id} sx={rowSx(isChildEditing, false, true)}>
