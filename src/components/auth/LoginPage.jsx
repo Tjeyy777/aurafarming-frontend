@@ -238,7 +238,7 @@ const LoginPage = () => {
 
             <Box sx={{ mt: 4, textAlign: 'center' }}>
               <Typography variant="caption" color="text.secondary">
-                © 2026 QUARRY PRO SUITE • ALL RIGHTS RESERVED
+                © 2026 Aura Farming Solutions Pvt. Ltd. • ALL RIGHTS RESERVED
               </Typography>
             </Box>
           </Paper>

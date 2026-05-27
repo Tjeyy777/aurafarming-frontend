@@ -198,7 +198,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, margin: "auto" }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
       {/* ─── HEADER ─── */}
       <Stack
         direction={{ xs: "column", sm: "row" }}

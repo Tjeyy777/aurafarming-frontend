@@ -80,7 +80,7 @@ function drawHeader(doc, periodLabel, dateRangeStr) {
   doc.setTextColor(...COLORS.white);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text("QUARRY PRO SUITE", 14, 22);
+  doc.text("Aura Farming Solutions Pvt. Ltd. ", 14, 22);
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
@@ -237,7 +237,7 @@ function drawFooters(doc) {
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.textLight);
-    doc.text("Quarry Pro Suite — Auto-Generated Report", 14, pageH - 9);
+    doc.text("Aura Farming Solutions Pvt. Ltd. — Auto-Generated Report", 14, pageH - 9);
     doc.text(`Page ${i} of ${totalPages}`, pageW - 14, pageH - 9, { align: "right" });
 
     // Bottom accent

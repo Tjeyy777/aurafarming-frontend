@@ -121,8 +121,8 @@ export default function Layout({ children, onNavigate, currentPage, onToggleThem
                <Box sx={{ width: 18, height: 18, border: "2.5px solid #fff", borderRadius: "3px" }} />
             </Box>
             <Box>
-              <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "text.primary", lineHeight: 1 }}>QUARRY</Typography>
-              <Typography sx={{ fontSize: "0.6rem", color: "primary.main", fontWeight: 700 }}>PRO SUITE</Typography>
+              <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "text.primary", lineHeight: 1 }}>Aura</Typography>
+              <Typography sx={{ fontSize: "0.6rem", color: "primary.main", fontWeight: 700 }}>Farming</Typography>
             </Box>
           </Box>
         </Box>
@@ -245,4 +245,4 @@ export default function Layout({ children, onNavigate, currentPage, onToggleThem
       </Box>
     </Box>
   );
-}
+}

@@ -159,7 +159,7 @@ export default function EmployeesPage() {
   if (isLoading) return <Box sx={{ p: 4, textAlign: 'center' }}><Typography variant="h6">Syncing Database...</Typography></Box>;
 
   return (
-    <Box sx={{ maxWidth: "1600px", margin: "auto" }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
       
       {/* HEADER SECTION */}
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} sx={{ mb: 4, gap: 2 }}>

@@ -342,7 +342,7 @@ export default function RentedMachineryPage() {
   });
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
       {/* Header */}
       <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} sx={{ mb: 3.5, gap: 2 }}>
         <Box>

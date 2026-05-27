@@ -143,7 +143,7 @@ function MachineryDashboardView({ onNavigate }) {
   };
 
   return (
-    <Box sx={{ maxWidth: 1400, margin: 'auto' }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
       {/* Dynamic Sub-header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

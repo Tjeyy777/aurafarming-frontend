@@ -125,7 +125,7 @@ export default function TeamManagementPage() {
   };
 
   return (
-    <Box>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mb: 3 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: "-0.02em", mb: 0.5 }}>

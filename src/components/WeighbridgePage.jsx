@@ -349,7 +349,7 @@ export default function WeighbridgePage() {
   const actionBtnSx = { borderRadius: "8px", bgcolor: isDark ? "rgba(255,255,255,0.06)" : "#f4f6f8", "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.1)" : "#e8ecf4" } };
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
 
       {/* ── Header ── */}
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} sx={{ mb: 3.5, gap: 2 }}>

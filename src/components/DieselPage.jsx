@@ -262,7 +262,7 @@ export default function DieselPage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, pb: 10 }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
       <Box
         sx={{
           display: "flex",
