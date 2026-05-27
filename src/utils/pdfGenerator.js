@@ -1,6 +1,6 @@
 // src/utils/pdfGenerator.js
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 // ─── Color Palette ───────────────────────────────────────────────────────────
 const COLORS = {
@@ -176,7 +176,7 @@ function drawTable(doc, head, body, y) {
     y = 14;
   }
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     head: [head],
     body: body,
