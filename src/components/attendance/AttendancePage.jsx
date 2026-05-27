@@ -3,7 +3,7 @@ import { useEmployees } from "../../hooks/useEmployees";
 import { useAttendance } from "../../hooks/useAttendence";
 import {
   Box, LinearProgress, Stack, Tabs, Tab, Typography, Paper, useTheme, Fade,
-  FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip
+  FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip, Button
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HistoryIcon from "@mui/icons-material/History";
@@ -267,23 +267,46 @@ export default function AttendancePage() {
           <ExportButton onClick={() => setExportOpen(true)} />
 
           {/* Tab Switcher */}
-          <Paper sx={{ p: 0.5, borderRadius: 3, bgcolor: "action.hover", display: "inline-flex" }} elevation={0}>
-            <Tabs
-              value={tab}
-              onChange={(_, v) => setTab(v)}
-              TabIndicatorProps={{ sx: { display: "none" } }}
+          <Box sx={{ 
+            display: "inline-flex", 
+            p: '4px', 
+            bgcolor: isDark ? "rgba(0,0,0,0.3)" : "#e2e8f0", 
+            borderRadius: "12px",
+            border: `1px solid ${theme.palette.divider}`
+          }}>
+            <Button
+              disableElevation
+              onClick={() => setTab("daily")}
+              startIcon={<CheckCircleOutlineIcon sx={{ fontSize: 18 }} />}
               sx={{
-                "& .MuiTab-root": {
-                  borderRadius: 2, minHeight: 40, px: 3, textTransform: "none", fontWeight: 700,
-                  transition: "0.3s", color: "text.secondary",
-                  "&.Mui-selected": { bgcolor: "background.paper", color: "primary.main", boxShadow: theme.shadows[2] },
-                },
+                borderRadius: "8px", px: 3, py: 0.75, 
+                textTransform: "none", fontWeight: 700, fontSize: "0.85rem",
+                bgcolor: tab === "daily" ? (isDark ? "rgba(255,140,0,0.1)" : "#ffffff") : "transparent",
+                color: tab === "daily" ? "primary.main" : "text.secondary",
+                boxShadow: tab === "daily" ? (isDark ? "0 2px 8px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.05)") : "none",
+                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                "&:hover": { bgcolor: tab === "daily" ? (isDark ? "rgba(255,140,0,0.15)" : "#ffffff") : (isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.5)") }
               }}
             >
-              <Tab value="daily" label="Check-In" icon={<CheckCircleOutlineIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
-              <Tab value="history" label="History" icon={<HistoryIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
-            </Tabs>
-          </Paper>
+              Check-In
+            </Button>
+            <Button
+              disableElevation
+              onClick={() => setTab("history")}
+              startIcon={<HistoryIcon sx={{ fontSize: 18 }} />}
+              sx={{
+                borderRadius: "8px", px: 3, py: 0.75, 
+                textTransform: "none", fontWeight: 700, fontSize: "0.85rem",
+                bgcolor: tab === "history" ? (isDark ? "rgba(255,140,0,0.1)" : "#ffffff") : "transparent",
+                color: tab === "history" ? "primary.main" : "text.secondary",
+                boxShadow: tab === "history" ? (isDark ? "0 2px 8px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.05)") : "none",
+                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                "&:hover": { bgcolor: tab === "history" ? (isDark ? "rgba(255,140,0,0.15)" : "#ffffff") : (isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.5)") }
+              }}
+            >
+              History
+            </Button>
+          </Box>
         </Stack>
       </Stack>
 
