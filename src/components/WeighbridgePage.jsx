@@ -546,6 +546,9 @@ export default function WeighbridgePage() {
                   ))}
                 </Stack>
               )}
+              {historyPagination?.totalPages > 1 && (
+                <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}><Pagination page={historyPage} count={historyPagination.totalPages} onChange={(_, v) => setHistoryPage(v)} color="primary" /></Box>
+              )}
             </CardContent>
           </Card>
           </Box>
