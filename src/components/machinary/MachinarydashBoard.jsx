@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
-  Box, Typography, Button, Grid, Fab, CircularProgress,Stack, Alert, Paper, useTheme
+  Box, Typography, Button, Grid, Fab, CircularProgress,Stack, Alert, Paper, useTheme,
+  TablePagination,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AddIcon from '@mui/icons-material/Add';
@@ -44,6 +45,8 @@ function MachineryDashboardView({ onNavigate }) {
   const [deleteMachineTarget, setDeleteMachineTarget] = useState(null);
   const [serviceMachineTarget, setServiceMachineTarget] = useState(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
 
   const { data: machines = [], isLoading, error } = useMachines();
   const createMachine = useCreateMachine();
@@ -261,8 +264,11 @@ function MachineryDashboardView({ onNavigate }) {
             </Button>
           </Paper>
         ) : (
+          <>
           <Grid container spacing={3}>
-            {filtered.map((m) => (
+            {filtered
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((m) => (
               <Grid item xs={12} lg={6} key={m._id}>
                 <MachineCard
                   machine={m}
@@ -275,6 +281,21 @@ function MachineryDashboardView({ onNavigate }) {
               </Grid>
             ))}
           </Grid>
+
+          {/* Pagination */}
+          {filtered.length > rowsPerPage && (
+            <TablePagination
+              component="div"
+              count={filtered.length}
+              page={page}
+              onPageChange={(_, p) => setPage(p)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+              rowsPerPageOptions={[6, 12, 24, 48]}
+              sx={{ mt: 2 }}
+            />
+          )}
+        </>
         )}
       </Stack>
 

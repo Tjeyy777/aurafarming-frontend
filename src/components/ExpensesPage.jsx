@@ -26,6 +26,7 @@ import { useExpenses } from "../hooks/useExpenses";
 import ExportDialog, { ExportButton } from "./ExportDialog";
 import { generateExpensesPDF } from "../utils/pdfGenerator";
 import { generateExpensesExcel } from "../utils/excelGenerator";
+import { fetchAllExpenses } from "../utils/exportDataFetcher";
 
 const formatLabel = (value = "") =>
   value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -633,8 +634,14 @@ export default function ExpensesPage() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Expenses"
-        onExportPDF={(period, customDate) => generateExpensesPDF({ expenses, period, customDate })}
-        onExportExcel={(period, customDate) => generateExpensesExcel({ expenses, period, customDate })}
+        onExportPDF={async (period, customDate) => {
+          const allExpenses = await fetchAllExpenses();
+          generateExpensesPDF({ expenses: allExpenses, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          const allExpenses = await fetchAllExpenses();
+          generateExpensesExcel({ expenses: allExpenses, period, customDate });
+        }}
       />
     </Box>
   );

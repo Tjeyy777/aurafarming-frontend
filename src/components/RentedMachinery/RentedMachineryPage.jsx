@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Box, Typography, Button, TextField, MenuItem, Paper, Checkbox,
   CircularProgress, IconButton, Collapse, Chip, Grid, Stack, InputBase,
+  TablePagination,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -27,6 +28,7 @@ import {
 import ExportDialog, { ExportButton } from '../ExportDialog';
 import { generateRentedLogsPDF } from '../../utils/pdfGenerator';
 import { generateRentedLogsExcel } from '../../utils/excelGenerator';
+import { fetchAllRentedLogs } from '../../utils/exportDataFetcher';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -160,6 +162,8 @@ export default function RentedMachineryPage() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [exportOpen, setExportOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
 
   const [newRow, setNewRow] = useState({
     vehicleId: '',
@@ -526,7 +530,9 @@ export default function RentedMachineryPage() {
               </Box>
             ) : (
               <Stack spacing={0.75}>
-                {filteredLogs.map((log) => {
+                {filteredLogs
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((log) => {
                   const isEditing = editingId === log._id;
                   const isSelected = selectedIds.includes(log._id);
                   const hasChildren = log.children && log.children.length > 0;
@@ -717,14 +723,34 @@ export default function RentedMachineryPage() {
             )}
           </Box>
         </Box>
+
+        {/* Pagination */}
+        {filteredLogs.length > rowsPerPage && (
+          <TablePagination
+            component="div"
+            count={filteredLogs.length}
+            page={page}
+            onPageChange={(_, p) => setPage(p)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+            rowsPerPageOptions={[6, 12, 24, 48]}
+            sx={{ mt: 2 }}
+          />
+        )}
       </Paper>
 
       <ExportDialog
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Rented Machinery"
-        onExportPDF={(period, customDate) => generateRentedLogsPDF({ logs, period, customDate })}
-        onExportExcel={(period, customDate) => generateRentedLogsExcel({ logs, period, customDate })}
+        onExportPDF={async (period, customDate) => {
+          const allLogs = await fetchAllRentedLogs();
+          generateRentedLogsPDF({ logs: allLogs, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          const allLogs = await fetchAllRentedLogs();
+          generateRentedLogsExcel({ logs: allLogs, period, customDate });
+        }}
       />
     </Box>
   );

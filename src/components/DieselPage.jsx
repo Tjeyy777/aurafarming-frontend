@@ -28,6 +28,7 @@ import { useDiesel } from "../hooks/useDiesel";
 import ExportDialog, { ExportButton } from "./ExportDialog";
 import { generateDieselPDF } from "../utils/pdfGenerator";
 import { generateDieselExcel } from "../utils/excelGenerator";
+import { fetchAllDieselEntries } from "../utils/exportDataFetcher";
 
 const dieselTypeOptions = ["all", "machine", "other"];
 
@@ -799,8 +800,14 @@ export default function DieselPage() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Diesel"
-        onExportPDF={(period, customDate) => generateDieselPDF({ entries, period, customDate })}
-        onExportExcel={(period, customDate) => generateDieselExcel({ entries, period, customDate })}
+        onExportPDF={async (period, customDate) => {
+          const allEntries = await fetchAllDieselEntries();
+          generateDieselPDF({ entries: allEntries, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          const allEntries = await fetchAllDieselEntries();
+          generateDieselExcel({ entries: allEntries, period, customDate });
+        }}
       />
     </Box>
   );

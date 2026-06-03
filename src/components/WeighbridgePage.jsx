@@ -44,6 +44,7 @@ import { useWeighbridge } from "../hooks/useWighbridge";
 import ExportDialog, { ExportButton } from "./ExportDialog";
 import { generateWeighbridgePDF } from "../utils/pdfGenerator";
 import { generateWeighbridgeExcel } from "../utils/excelGenerator";
+import { fetchAllWeighbridgeEntries } from "../utils/exportDataFetcher";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -639,8 +640,14 @@ export default function WeighbridgePage() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Weighbridge"
-        onExportPDF={(period, customDate) => generateWeighbridgePDF({ entries: todayEntries, period, customDate })}
-        onExportExcel={(period, customDate) => generateWeighbridgeExcel({ entries: todayEntries, period, customDate })}
+        onExportPDF={async (period, customDate) => {
+          const allEntries = await fetchAllWeighbridgeEntries();
+          generateWeighbridgePDF({ entries: allEntries, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          const allEntries = await fetchAllWeighbridgeEntries();
+          generateWeighbridgeExcel({ entries: allEntries, period, customDate });
+        }}
       />
     </Box>
   );

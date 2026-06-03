@@ -28,7 +28,8 @@ import {
   TextField,
   Tooltip,
   Typography,
-  useTheme
+  useTheme,
+  TablePagination,
 } from "@mui/material";
 import { useState } from "react";
 import { useEmployees } from "../hooks/useEmployees";
@@ -65,6 +66,8 @@ export default function EmployeesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("active"); // "all", "active", "inactive"
   const [exportOpen, setExportOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
 
   const [formData, setFormData] = useState({
     employeeCode: "", name: "", phone: "", 
@@ -256,7 +259,9 @@ export default function EmployeesPage() {
 
       {/* MODERN GRID VIEW */}
       <Grid container spacing={3}>
-        {filteredEmployees?.map((emp) => (
+        {filteredEmployees
+          ?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((emp) => (
           <Grid item xs={12} sm={6} md={4} lg={3} key={emp._id}>
             <Card sx={{ 
               borderRadius: 4, 
@@ -340,6 +345,20 @@ export default function EmployeesPage() {
           </Grid>
         ))}
       </Grid>
+
+      {/* Pagination */}
+      {filteredEmployees?.length > rowsPerPage && (
+        <TablePagination
+          component="div"
+          count={filteredEmployees.length}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+          rowsPerPageOptions={[8, 12, 24, 48]}
+          sx={{ mt: 2 }}
+        />
+      )}
 
       {employees.length === 0 && (
         <Box textAlign="center" mt={5}>
