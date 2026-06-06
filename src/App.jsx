@@ -41,6 +41,7 @@ import { useAttendance } from "./hooks/useAttendence";
 // PDF & Excel Generators
 import { generateQuarryPDF, getDateRange } from "./utils/pdfGenerator";
 import { generateFullExcel } from "./utils/excelGenerator";
+import { fetchAllRentedLogs, fetchAllMachines } from "./utils/exportDataFetcher";
 
 // Pages that should use full viewport width (no Container constraint)
 const FULL_WIDTH_PAGES = ["Weighbridge"];
@@ -106,6 +107,21 @@ function App() {
         console.warn("Could not fetch attendance for PDF:", e);
       }
 
+      let rentedLogs = [];
+      let machinesList = machines;
+      try {
+        const [logsRes, machinesRes] = await Promise.all([
+          fetchAllRentedLogs(),
+          fetchAllMachines()
+        ]);
+        rentedLogs = logsRes;
+        if (machinesRes && machinesRes.length > 0) {
+          machinesList = machinesRes;
+        }
+      } catch (e) {
+        console.warn("Could not fetch fresh data for PDF:", e);
+      }
+
       // Use a small timeout to let the UI update with the loading state
       await new Promise((r) => setTimeout(r, 100));
 
@@ -117,10 +133,10 @@ function App() {
         consumableItems,
         expenses,
         dieselEntries,
-        machines,
+        machines: machinesList,
         weighbridgeEntries: todayEntries,
         attendanceRecords,
-        rentedLogs: [], // Rented logs are fetched via react-query inside the page, passing empty for now
+        rentedLogs, // Now passing the fetched logs
       });
     } catch (err) {
       console.error("PDF generation failed:", err);
@@ -135,6 +151,40 @@ function App() {
   const handleGenerateExcel = useCallback(async () => {
     setIsGenerating(true);
     try {
+      // Fetch attendance data for the period
+      let attendanceRecords = [];
+      try {
+        const { start, end } = getDateRange(reportPeriod, customDate);
+        // Fetch attendance for each day in range
+        const days = [];
+        const cur = new Date(start);
+        while (cur <= end) {
+          days.push(cur.toISOString().split("T")[0]);
+          cur.setDate(cur.getDate() + 1);
+        }
+        const results = await Promise.all(days.map((d) => getAttendanceByDate(d)));
+        results.forEach((r) => {
+          if (r?.data) attendanceRecords.push(...r.data);
+        });
+      } catch (e) {
+        console.warn("Could not fetch attendance for Excel:", e);
+      }
+
+      let rentedLogs = [];
+      let machinesList = machines;
+      try {
+        const [logsRes, machinesRes] = await Promise.all([
+          fetchAllRentedLogs(),
+          fetchAllMachines()
+        ]);
+        rentedLogs = logsRes;
+        if (machinesRes && machinesRes.length > 0) {
+          machinesList = machinesRes;
+        }
+      } catch (e) {
+        console.warn("Could not fetch fresh data for Excel:", e);
+      }
+
       await new Promise((r) => setTimeout(r, 100));
       generateFullExcel({
         period: reportPeriod,
@@ -144,10 +194,10 @@ function App() {
         consumableItems,
         expenses,
         dieselEntries,
-        machines,
+        machines: machinesList,
         weighbridgeEntries: todayEntries,
-        attendanceRecords: [],
-        rentedLogs: [],
+        attendanceRecords,
+        rentedLogs,
       });
     } catch (err) {
       console.error("Excel generation failed:", err);
@@ -156,7 +206,7 @@ function App() {
       setIsGenerating(false);
       setOpenReportDialog(false);
     }
-  }, [reportPeriod, customDate, employees, explosiveItems, consumableItems, expenses, dieselEntries, machines, todayEntries]);
+  }, [reportPeriod, customDate, employees, explosiveItems, consumableItems, expenses, dieselEntries, machines, todayEntries, getAttendanceByDate]);
 
   const handleNavigate = useCallback((page) => {
     if (!isAdmin && (page === "Dashboard" || page === "Team Management")) {

@@ -455,13 +455,13 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Machine Name", "Type", "Model", "Total Hours", "Status"],
+      ["#", "Machine Name", "Type", "Machine Code", "Meter Reading", "Status"],
       machines.map((m, i) => [
         i + 1,
         m.machineName || m.name || "—",
         m.machineType || m.type || "—",
-        m.model || "—",
-        m.totalHoursRun ?? "—",
+        m.machineCode || "—",
+        m.currentMeterReading ?? "—",
         (m.status || "Active").toUpperCase(),
       ]),
       y
@@ -681,9 +681,9 @@ export function generateMachineryPDF({ machines = [], period, customDate }) {
       { label: "Total", value: machines.length },
       { label: "Active", value: machines.filter(m => m.status === "active" || !m.status).length },
     ], y);
-    y = drawTable(doc, ["#", "Machine Name", "Type", "Model", "Total Hours", "Status"],
+    y = drawTable(doc, ["#", "Machine Name", "Type", "Machine Code", "Meter Reading", "Status"],
       machines.map((m, i) => [i + 1, m.machineName || m.name || "—", m.machineType || m.type || "—",
-        m.model || "—", m.totalHoursRun ?? "—", (m.status || "Active").toUpperCase()]), y);
+        m.machineCode || "—", m.currentMeterReading ?? "—", (m.status || "Active").toUpperCase()]), y);
   } else { y = drawNoData(doc, y); }
   finishModulePDF(doc, "Machinery", periodLabel, start);
 }

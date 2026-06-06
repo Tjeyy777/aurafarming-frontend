@@ -133,8 +133,8 @@ export function generateMachineryExcel({ machines = [], period, customDate }) {
 
   addSheet(wb, "Machinery", machines.map((m, i) => [
     i + 1, m.machineName || m.name || "—", m.machineType || m.type || "—",
-    m.model || "—", m.totalHoursRun ?? "—", (m.status || "Active").toUpperCase(),
-  ]), ["#", "Machine Name", "Type", "Model", "Total Hours", "Status"]);
+    m.machineCode || "—", m.currentMeterReading ?? "—", (m.status || "Active").toUpperCase(),
+  ]), ["#", "Machine Name", "Type", "Machine Code", "Meter Reading", "Status"]);
 
   saveWorkbook(wb, `Machinery_Report_${fmtDate(start)}.xlsx`);
 }
@@ -264,8 +264,8 @@ export function generateFullExcel({
   // Machinery
   addSheet(wb, "Machinery", machines.map((m, i) => [
     i + 1, m.machineName || m.name || "—", m.machineType || m.type || "—",
-    m.totalHoursRun ?? "—", (m.status || "Active").toUpperCase(),
-  ]), ["#", "Name", "Type", "Total Hours", "Status"]);
+    m.currentMeterReading ?? "—", (m.status || "Active").toUpperCase(),
+  ]), ["#", "Name", "Type", "Meter Reading", "Status"]);
 
   // Diesel
   if (filteredDiesel.length > 0) {

@@ -36,3 +36,11 @@ export async function fetchAllRentedLogs() {
   const res = await api.get("/rented-machines/logs");
   return res.data?.data || [];
 }
+
+/**
+ * Fetch ALL machines.
+ */
+export async function fetchAllMachines() {
+  const res = await api.get("/machines");
+  return res.data?.data || [];
+}
