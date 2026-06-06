@@ -312,7 +312,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Name", "Role", "Daily Wage", "Phone", "Status"],
+      ["#", "Name", "Role", "Daily Wage (₹)", "Phone", "Status"],
       employees.slice(0, 100).map((e, i) => [
         i + 1,
         e.name || "—",
@@ -344,7 +344,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate"],
+      ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate (₹)"],
       filteredAttendance.slice(0, 200).map((a, i) => [
         i + 1,
         fmtDate(a.date),
@@ -400,7 +400,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost", "Total Value"],
+      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost (₹)", "Total Value (₹)"],
       explosiveItems.map((item, i) => [
         i + 1,
         item.name || "—",
@@ -427,7 +427,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost", "Total Value"],
+      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost (₹)", "Total Value (₹)"],
       consumableItems.map((item, i) => [
         i + 1,
         item.name || "—",
@@ -482,7 +482,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "For", "Litres", "Rate/L", "Total Cost"],
+      ["#", "Date", "For", "Litres", "Rate/L (₹)", "Total Cost (₹)"],
       filteredDiesel.map((e, i) => [
         i + 1,
         fmtDate(e.date),
@@ -508,7 +508,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Expense Name", "Category", "Amount", "Notes"],
+      ["#", "Date", "Expense Name", "Category", "Amount (₹)", "Notes"],
       filteredExpenses.map((e, i) => [
         i + 1,
         fmtDate(e.date),
@@ -528,22 +528,34 @@ export function generateQuarryPDF({
   // ═════════════════════════════════════════════════════════════════════════
   y = drawSectionTitle(doc, `Rented Machinery Logs (${periodLabel})`, y);
   if (filteredRentedLogs.length > 0) {
-    const totalRentedCost = filteredRentedLogs.reduce((s, l) => s + Number(l.totalCost || l.amount || 0), 0);
+    const mainEntries = filteredRentedLogs.filter((l) => !l.isTrip);
+    const tripEntries = filteredRentedLogs.filter((l) => l.isTrip);
+    const totalRentedCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
+    const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
+    const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
     y = drawSummaryCards(doc, [
-      { label: "Total Logs", value: filteredRentedLogs.length },
+      { label: "Main Entries", value: mainEntries.length },
+      { label: "Trips", value: tripEntries.length },
+      { label: "Our Hours", value: totalHours },
+      { label: "Trip Hours", value: totalTripHours },
       { label: "Total Cost", value: INR(totalRentedCost) },
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Vehicle", "Work Type", "Hours/Trips", "Rate", "Total"],
+      ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"],
       filteredRentedLogs.map((l, i) => [
         i + 1,
         fmtDate(l.date),
-        l.vehicleId?.vehicleName || l.vehicleName || "—",
-        l.workType || "—",
-        l.hoursWorked || l.trips || "—",
-        INR(l.ratePerHour || l.ratePerTrip),
-        INR(l.totalCost || l.amount),
+        l.vehicleId?.vehicleNumber || "—",
+        l.vehicleId?.vehicleType || "—",
+        l.driverName || "—",
+        l.openingMeter ?? "—",
+        l.closingMeter ?? "—",
+        l.totalHours ?? 0,
+        INR(l.hourlyRate),
+        INR(l.cost),
+        l.isTrip ? "Yes" : "No",
+        l.remarks || l.tripPurpose || "—",
       ]),
       y
     );
@@ -591,7 +603,7 @@ export function generateEmployeesPDF({ employees = [], period, customDate }) {
       { label: "Inactive", value: employees.filter(e => !e.isActive).length },
       { label: "Total", value: employees.length },
     ], y);
-    y = drawTable(doc, ["#", "Name", "Role", "Sub-Role", "Daily Wage", "Phone", "Status", "Aadhar"],
+    y = drawTable(doc, ["#", "Name", "Role", "Sub-Role", "Daily Wage (₹)", "Phone", "Status", "Aadhar"],
       employees.map((e, i) => [i + 1, e.name || "—", e.role?.title || "—", e.subRole?.title || "—",
         INR(e.dailyWage), e.phone || "—", e.isActive ? "Active" : "Inactive", e.aadharNumber || "—"]), y);
   } else { y = drawNoData(doc, y); }
@@ -610,7 +622,7 @@ export function generateAttendancePDF({ records = [], period, customDate }) {
       { label: "Total", value: records.length },
       { label: "OT Hours", value: records.reduce((s, a) => s + Number(a.overtimeHour || 0), 0) },
     ], y);
-    y = drawTable(doc, ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate"],
+    y = drawTable(doc, ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate (₹)"],
       records.map((a, i) => [i + 1, fmtDate(a.date), a.employeeId?.name || "—",
         (a.status || "—").toUpperCase(), a.overtimeHour || 0, INR(a.perHourRate)]), y);
   } else { y = drawNoData(doc, y, "No attendance records for this period."); }
@@ -648,7 +660,7 @@ export function generateExplosivesPDF({ items = [], period, customDate }) {
       { label: "Total Items", value: items.length },
       { label: "Inventory Value", value: INR(totalValue) },
     ], y);
-    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost", "Value"],
+    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost (₹)", "Value (₹)"],
       items.map((item, i) => [i + 1, item.name || "—", item.category || "—", item.currentStock ?? 0,
         item.unit || "—", INR(item.unitCost), INR((item.currentStock || 0) * (item.unitCost || 0))]), y);
   } else { y = drawNoData(doc, y); }
@@ -665,7 +677,7 @@ export function generateConsumablesPDF({ items = [], period, customDate }) {
       { label: "Total Items", value: items.length },
       { label: "Inventory Value", value: INR(totalValue) },
     ], y);
-    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost", "Value"],
+    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost (₹)", "Value (₹)"],
       items.map((item, i) => [i + 1, item.name || "—", item.category || "—", item.currentStock ?? 0,
         item.unit || "—", INR(item.unitCost), INR((item.currentStock || 0) * (item.unitCost || 0))]), y);
   } else { y = drawNoData(doc, y); }
@@ -701,7 +713,7 @@ export function generateDieselPDF({ entries = [], period, customDate }) {
       { label: "Total Cost", value: INR(totalC) },
       { label: "Entries", value: filtered.length },
     ], y);
-    y = drawTable(doc, ["#", "Date", "For", "Litres", "Rate/L", "Total Cost"],
+    y = drawTable(doc, ["#", "Date", "For", "Litres", "Rate/L (₹)", "Total Cost (₹)"],
       filtered.map((e, i) => [i + 1, fmtDate(e.date),
         e.dieselFor === "machine" ? (e.machineId?.machineName || "Machine") : (e.expenseName || "—"),
         e.litres ?? "—", INR(e.pricePerLitre), INR(e.totalCost)]), y);
@@ -720,7 +732,7 @@ export function generateExpensesPDF({ expenses = [], period, customDate }) {
       { label: "Total Amount", value: INR(total) },
       { label: "Entries", value: filtered.length },
     ], y);
-    y = drawTable(doc, ["#", "Date", "Expense Name", "Category", "Amount", "Notes"],
+    y = drawTable(doc, ["#", "Date", "Expense Name", "Category", "Amount (₹)", "Notes"],
       filtered.map((e, i) => [i + 1, fmtDate(e.date), e.expenseName || "—",
         e.category || "—", INR(e.amount), e.notes || "—"]), y);
   } else { y = drawNoData(doc, y, "No expense entries for this period."); }
@@ -731,17 +743,26 @@ export function generateRentedLogsPDF({ logs = [], period, customDate }) {
   const { doc, start, end, periodLabel } = createModulePDF("RentedMachinery", period, customDate);
   let y = 48;
   const filtered = filterByDateRange(logs, start, end, "date");
-  const totalCost = filtered.reduce((s, l) => s + Number(l.totalCost || l.amount || 0), 0);
+  const mainEntries = filtered.filter((l) => !l.isTrip);
+  const tripEntries = filtered.filter((l) => l.isTrip);
+  const totalCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
+  const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
+  const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
   y = drawSectionTitle(doc, `Rented Machinery Logs (${periodLabel})`, y);
   if (filtered.length > 0) {
     y = drawSummaryCards(doc, [
-      { label: "Total Logs", value: filtered.length },
+      { label: "Main Entries", value: mainEntries.length },
+      { label: "Trips", value: tripEntries.length },
+      { label: "Our Hours", value: totalHours },
+      { label: "Trip Hours", value: totalTripHours },
       { label: "Total Cost", value: INR(totalCost) },
     ], y);
-    y = drawTable(doc, ["#", "Date", "Vehicle", "Work Type", "Hours/Trips", "Rate", "Total"],
-      filtered.map((l, i) => [i + 1, fmtDate(l.date), l.vehicleId?.vehicleName || l.vehicleName || "—",
-        l.workType || "—", l.hoursWorked || l.trips || "—",
-        INR(l.ratePerHour || l.ratePerTrip), INR(l.totalCost || l.amount)]), y);
+    y = drawTable(doc, ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"],
+      filtered.map((l, i) => [i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
+        l.vehicleId?.vehicleType || "—", l.driverName || "—",
+        l.openingMeter ?? "—", l.closingMeter ?? "—", l.totalHours ?? 0,
+        INR(l.hourlyRate), INR(l.cost),
+        l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—"]), y);
   } else { y = drawNoData(doc, y, "No rented machinery logs for this period."); }
   finishModulePDF(doc, "RentedMachinery", periodLabel, start);
 }
