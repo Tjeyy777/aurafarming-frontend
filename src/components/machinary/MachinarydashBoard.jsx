@@ -26,6 +26,7 @@ import MachineryReports from './Machinaryreports';
 import ExportDialog, { ExportButton } from '../ExportDialog';
 import { generateMachineryPDF } from '../../utils/pdfGenerator';
 import { generateMachineryExcel } from '../../utils/excelGenerator';
+import { fetchAllMachines } from '../../utils/exportDataFetcher';
 
 function MachineryDashboardView({ onNavigate }) {
   const theme = useTheme();
@@ -347,8 +348,14 @@ function MachineryDashboardView({ onNavigate }) {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Machinery"
-        onExportPDF={(period, customDate) => generateMachineryPDF({ machines, period, customDate })}
-        onExportExcel={(period, customDate) => generateMachineryExcel({ machines, period, customDate })}
+        onExportPDF={async (period, customDate) => {
+          const allMachines = await fetchAllMachines();
+          generateMachineryPDF({ machines: allMachines, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          const allMachines = await fetchAllMachines();
+          generateMachineryExcel({ machines: allMachines, period, customDate });
+        }}
       />
     </Box>
   );

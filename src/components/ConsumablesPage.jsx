@@ -32,6 +32,7 @@ import { useConsumables } from "../hooks/useConsumables";
 import ExportDialog, { ExportButton } from "./ExportDialog";
 import { generateConsumablesPDF } from "../utils/pdfGenerator";
 import { generateConsumablesExcel } from "../utils/excelGenerator";
+import { fetchAllConsumables } from "../utils/exportDataFetcher";
 
 const categoryOptions = [
   "all",
@@ -889,8 +890,14 @@ export default function ConsumablesPage() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Consumables"
-        onExportPDF={(period, customDate) => generateConsumablesPDF({ items, period, customDate })}
-        onExportExcel={(period, customDate) => generateConsumablesExcel({ items, period, customDate })}
+        onExportPDF={async (period, customDate) => {
+          const allConsumables = await fetchAllConsumables();
+          generateConsumablesPDF({ items: allConsumables, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          const allConsumables = await fetchAllConsumables();
+          generateConsumablesExcel({ items: allConsumables, period, customDate });
+        }}
       />
     </Box>
   );

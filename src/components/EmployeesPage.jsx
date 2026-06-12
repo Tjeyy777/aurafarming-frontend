@@ -36,6 +36,7 @@ import { useEmployees } from "../hooks/useEmployees";
 import ExportDialog, { ExportButton } from "./ExportDialog";
 import { generateEmployeesPDF } from "../utils/pdfGenerator";
 import { generateEmployeesExcel } from "../utils/excelGenerator";
+import { fetchAllEmployees } from "../utils/exportDataFetcher";
 
 export default function EmployeesPage() {
   const theme = useTheme();
@@ -681,8 +682,14 @@ export default function EmployeesPage() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Employees"
-        onExportPDF={(period, customDate) => generateEmployeesPDF({ employees, period, customDate })}
-        onExportExcel={(period, customDate) => generateEmployeesExcel({ employees, period, customDate })}
+        onExportPDF={async (period, customDate) => {
+          const allEmployees = await fetchAllEmployees();
+          generateEmployeesPDF({ employees: allEmployees, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          const allEmployees = await fetchAllEmployees();
+          generateEmployeesExcel({ employees: allEmployees, period, customDate });
+        }}
       />
     </Box>
   );

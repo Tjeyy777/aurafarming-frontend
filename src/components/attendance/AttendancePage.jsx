@@ -14,6 +14,7 @@ import AttendanceToast from "./AttendanceToast";
 import ExportDialog, { ExportButton } from "../ExportDialog";
 import { generateAttendancePDF } from "../../utils/pdfGenerator";
 import { generateAttendanceExcel } from "../../utils/excelGenerator";
+import { fetchAllAttendanceForRange } from "../../utils/exportDataFetcher";
 
 export default function AttendancePage() {
   const theme = useTheme();
@@ -351,23 +352,13 @@ export default function AttendancePage() {
         onExportPDF={async (period, customDate) => {
           const { getDateRange } = await import("../../utils/pdfGenerator");
           const { start, end } = getDateRange(period, customDate);
-          const days = [];
-          const cur = new Date(start);
-          while (cur <= end) { days.push(cur.toISOString().split("T")[0]); cur.setDate(cur.getDate() + 1); }
-          const results = await Promise.all(days.map((d) => getAttendanceByDate(d)));
-          const records = [];
-          results.forEach((r) => { if (r?.data) records.push(...r.data); });
+          const records = await fetchAllAttendanceForRange(start, end);
           generateAttendancePDF({ records, period, customDate });
         }}
         onExportExcel={async (period, customDate) => {
           const { getDateRange } = await import("../../utils/pdfGenerator");
           const { start, end } = getDateRange(period, customDate);
-          const days = [];
-          const cur = new Date(start);
-          while (cur <= end) { days.push(cur.toISOString().split("T")[0]); cur.setDate(cur.getDate() + 1); }
-          const results = await Promise.all(days.map((d) => getAttendanceByDate(d)));
-          const records = [];
-          results.forEach((r) => { if (r?.data) records.push(...r.data); });
+          const records = await fetchAllAttendanceForRange(start, end);
           generateAttendanceExcel({ records, period, customDate });
         }}
       />

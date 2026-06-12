@@ -35,6 +35,7 @@ import { useInventory } from "../hooks/useInventory";
 import ExportDialog, { ExportButton } from "./ExportDialog";
 import { generateExplosivesPDF } from "../utils/pdfGenerator";
 import { generateExplosivesExcel } from "../utils/excelGenerator";
+import { fetchAllExplosives } from "../utils/exportDataFetcher";
 
 const categoryOptions = ["all", "explosive", "detonator", "fuse", "accessory", "other"];
 const unitOptions = ["kg", "pieces", "meter"];
@@ -963,8 +964,14 @@ export default function ExplosivesPage() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Explosives"
-        onExportPDF={(period, customDate) => generateExplosivesPDF({ items, period, customDate })}
-        onExportExcel={(period, customDate) => generateExplosivesExcel({ items, period, customDate })}
+        onExportPDF={async (period, customDate) => {
+          const allExplosives = await fetchAllExplosives();
+          generateExplosivesPDF({ items: allExplosives, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          const allExplosives = await fetchAllExplosives();
+          generateExplosivesExcel({ items: allExplosives, period, customDate });
+        }}
       />
     </Box>
   );
