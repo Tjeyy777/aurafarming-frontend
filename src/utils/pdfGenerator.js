@@ -528,8 +528,9 @@ export function generateQuarryPDF({
   // ═════════════════════════════════════════════════════════════════════════
   y = drawSectionTitle(doc, `Rented Machinery Logs (${periodLabel})`, y);
   if (filteredRentedLogs.length > 0) {
-    const mainEntries = filteredRentedLogs.filter((l) => !l.isTrip);
-    const tripEntries = filteredRentedLogs.filter((l) => l.isTrip);
+    const sortedRentedLogs = [...filteredRentedLogs].reverse();
+    const mainEntries = sortedRentedLogs.filter((l) => !l.isTrip);
+    const tripEntries = sortedRentedLogs.filter((l) => l.isTrip);
     const totalRentedCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
     const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
     const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
@@ -543,7 +544,7 @@ export function generateQuarryPDF({
     y = drawTable(
       doc,
       ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"],
-      filteredRentedLogs.map((l, i) => [
+      sortedRentedLogs.map((l, i) => [
         i + 1,
         fmtDate(l.date),
         l.vehicleId?.vehicleNumber || "—",
@@ -743,13 +744,14 @@ export function generateRentedLogsPDF({ logs = [], period, customDate }) {
   const { doc, start, end, periodLabel } = createModulePDF("RentedMachinery", period, customDate);
   let y = 48;
   const filtered = filterByDateRange(logs, start, end, "date");
-  const mainEntries = filtered.filter((l) => !l.isTrip);
-  const tripEntries = filtered.filter((l) => l.isTrip);
+  const sortedLogs = [...filtered].reverse();
+  const mainEntries = sortedLogs.filter((l) => !l.isTrip);
+  const tripEntries = sortedLogs.filter((l) => l.isTrip);
   const totalCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
   const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
   const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
   y = drawSectionTitle(doc, `Rented Machinery Logs (${periodLabel})`, y);
-  if (filtered.length > 0) {
+  if (sortedLogs.length > 0) {
     y = drawSummaryCards(doc, [
       { label: "Main Entries", value: mainEntries.length },
       { label: "Trips", value: tripEntries.length },
@@ -758,7 +760,7 @@ export function generateRentedLogsPDF({ logs = [], period, customDate }) {
       { label: "Total Cost", value: INR(totalCost) },
     ], y);
     y = drawTable(doc, ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"],
-      filtered.map((l, i) => [i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
+      sortedLogs.map((l, i) => [i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
         l.vehicleId?.vehicleType || "—", l.driverName || "—",
         l.openingMeter ?? "—", l.closingMeter ?? "—", l.totalHours ?? 0,
         INR(l.hourlyRate), INR(l.cost),

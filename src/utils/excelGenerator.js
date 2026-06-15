@@ -187,8 +187,10 @@ export function generateRentedLogsExcel({ logs = [], period, customDate }) {
   const { start, end } = getDateRange(period, customDate);
   const filtered = filterByDateRange(logs, start, end, "date");
 
-  const mainEntries = filtered.filter((l) => !l.isTrip);
-  const tripEntries = filtered.filter((l) => l.isTrip);
+  const sortedLogs = [...filtered].reverse();
+
+  const mainEntries = sortedLogs.filter((l) => !l.isTrip);
+  const tripEntries = sortedLogs.filter((l) => l.isTrip);
   const totalCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
   const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
   const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
@@ -201,7 +203,7 @@ export function generateRentedLogsExcel({ logs = [], period, customDate }) {
     ["Total Cost (₹)", totalCost],
   ], ["Metric", "Value"]);
 
-  addSheet(wb, "Rented Logs", filtered.map((l, i) => [
+  addSheet(wb, "Rented Logs", sortedLogs.map((l, i) => [
     i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
     l.vehicleId?.vehicleType || "—", l.driverName || "—",
     l.openingMeter ?? "—", l.closingMeter ?? "—", l.totalHours ?? 0,
@@ -292,7 +294,8 @@ export function generateFullExcel({
 
   // Rented
   if (filteredRented.length > 0) {
-    addSheet(wb, "Rented Machinery", filteredRented.map((l, i) => [
+    const sortedRented = [...filteredRented].reverse();
+    addSheet(wb, "Rented Machinery", sortedRented.map((l, i) => [
       i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
       l.vehicleId?.vehicleType || "—", l.driverName || "—",
       l.openingMeter ?? "—", l.closingMeter ?? "—", l.totalHours ?? 0,
