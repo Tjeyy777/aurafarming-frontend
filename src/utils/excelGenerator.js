@@ -5,6 +5,7 @@ import { getDateRange, filterByDateRange } from "./pdfGenerator";
 const INR = (val) => Number(val || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—";
+const fmtHours = (val) => Number(Number(val || 0).toFixed(3));
 
 // ─── Helper: Create styled workbook with a sheet ─────────────────────────────
 function createWorkbook() {
@@ -51,13 +52,13 @@ export function generateAttendanceExcel({ records = [], period, customDate }) {
     ["Present", present],
     ["Absent", absent],
     ["Total Records", records.length],
-    ["OT Hours", records.reduce((s, a) => s + Number(a.overtimeHour || 0), 0)],
+    ["OT Hours", fmtHours(records.reduce((s, a) => s + Number(a.overtimeHour || 0), 0))],
   ], ["Metric", "Value"]);
 
   // Detail sheet
   addSheet(wb, "Attendance Records", records.map((a, i) => [
     i + 1, fmtDate(a.date), a.employeeId?.name || "—",
-    (a.status || "—").toUpperCase(), a.overtimeHour || 0, a.perHourRate || 0,
+    (a.status || "—").toUpperCase(), fmtHours(a.overtimeHour), a.perHourRate || 0,
   ]), ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate (₹)"]);
 
   saveWorkbook(wb, `Attendance_Report_${fmtDate(start)}.xlsx`);
@@ -192,8 +193,8 @@ export function generateRentedLogsExcel({ logs = [], period, customDate }) {
   const mainEntries = sortedLogs.filter((l) => !l.isTrip);
   const tripEntries = sortedLogs.filter((l) => l.isTrip);
   const totalCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
-  const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
-  const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
+  const totalHours = fmtHours(mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0));
+  const totalTripHours = fmtHours(tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0));
 
   addSheet(wb, "Summary", [
     ["Main Entries", mainEntries.length],
@@ -206,7 +207,7 @@ export function generateRentedLogsExcel({ logs = [], period, customDate }) {
   addSheet(wb, "Rented Logs", sortedLogs.map((l, i) => [
     i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
     l.vehicleId?.vehicleType || "—", l.driverName || "—",
-    l.openingMeter ?? "—", l.closingMeter ?? "—", l.totalHours ?? 0,
+    l.openingMeter ?? "—", l.closingMeter ?? "—", fmtHours(l.totalHours),
     l.hourlyRate || 0, l.cost || 0,
     l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—",
   ]), ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"]);
@@ -248,7 +249,7 @@ export function generateFullExcel({
   // Attendance
   if (filteredAttendance.length > 0) {
     addSheet(wb, "Attendance", filteredAttendance.map((a, i) => [
-      i + 1, fmtDate(a.date), a.employeeId?.name || "—", (a.status || "—").toUpperCase(), a.overtimeHour || 0,
+      i + 1, fmtDate(a.date), a.employeeId?.name || "—", (a.status || "—").toUpperCase(), fmtHours(a.overtimeHour),
     ]), ["#", "Date", "Employee", "Status", "OT Hours"]);
   }
 
@@ -298,7 +299,7 @@ export function generateFullExcel({
     addSheet(wb, "Rented Machinery", sortedRented.map((l, i) => [
       i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
       l.vehicleId?.vehicleType || "—", l.driverName || "—",
-      l.openingMeter ?? "—", l.closingMeter ?? "—", l.totalHours ?? 0,
+      l.openingMeter ?? "—", l.closingMeter ?? "—", fmtHours(l.totalHours),
       l.hourlyRate || 0, l.cost || 0,
       l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—",
     ]), ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"]);

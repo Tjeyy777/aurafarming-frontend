@@ -21,6 +21,7 @@ const COLORS = {
 const INR = (val) => `₹${Number(val || 0).toLocaleString("en-IN")}`;
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—";
+const fmtHours = (val) => Number(Number(val || 0).toFixed(3));
 
 // ─── Get date range based on period and custom date ──────────────────────────
 export const getDateRange = (period, customDate) => {
@@ -340,7 +341,7 @@ export function generateQuarryPDF({
       { label: "Present", value: presentCount },
       { label: "Absent", value: absentCount },
       { label: "Total Records", value: filteredAttendance.length },
-      { label: "OT Hours", value: totalOT },
+      { label: "OT Hours", value: fmtHours(totalOT) },
     ], y);
     y = drawTable(
       doc,
@@ -350,7 +351,7 @@ export function generateQuarryPDF({
         fmtDate(a.date),
         a.employeeId?.name || "—",
         (a.status || "—").toUpperCase(),
-        a.overtimeHour || 0,
+        fmtHours(a.overtimeHour),
         INR(a.perHourRate),
       ]),
       y
@@ -537,8 +538,8 @@ export function generateQuarryPDF({
     y = drawSummaryCards(doc, [
       { label: "Main Entries", value: mainEntries.length },
       { label: "Trips", value: tripEntries.length },
-      { label: "Our Hours", value: totalHours },
-      { label: "Trip Hours", value: totalTripHours },
+      { label: "Our Hours", value: fmtHours(totalHours) },
+      { label: "Trip Hours", value: fmtHours(totalTripHours) },
       { label: "Total Cost", value: INR(totalRentedCost) },
     ], y);
     y = drawTable(
@@ -552,7 +553,7 @@ export function generateQuarryPDF({
         l.driverName || "—",
         l.openingMeter ?? "—",
         l.closingMeter ?? "—",
-        l.totalHours ?? 0,
+        fmtHours(l.totalHours),
         INR(l.hourlyRate),
         INR(l.cost),
         l.isTrip ? "Yes" : "No",
@@ -621,11 +622,11 @@ export function generateAttendancePDF({ records = [], period, customDate }) {
       { label: "Present", value: present },
       { label: "Absent", value: records.filter(a => a.status === "absent").length },
       { label: "Total", value: records.length },
-      { label: "OT Hours", value: records.reduce((s, a) => s + Number(a.overtimeHour || 0), 0) },
+      { label: "OT Hours", value: fmtHours(records.reduce((s, a) => s + Number(a.overtimeHour || 0), 0)) },
     ], y);
     y = drawTable(doc, ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate (₹)"],
       records.map((a, i) => [i + 1, fmtDate(a.date), a.employeeId?.name || "—",
-        (a.status || "—").toUpperCase(), a.overtimeHour || 0, INR(a.perHourRate)]), y);
+        (a.status || "—").toUpperCase(), fmtHours(a.overtimeHour), INR(a.perHourRate)]), y);
   } else { y = drawNoData(doc, y, "No attendance records for this period."); }
   finishModulePDF(doc, "Attendance", periodLabel, start);
 }
@@ -755,14 +756,14 @@ export function generateRentedLogsPDF({ logs = [], period, customDate }) {
     y = drawSummaryCards(doc, [
       { label: "Main Entries", value: mainEntries.length },
       { label: "Trips", value: tripEntries.length },
-      { label: "Our Hours", value: totalHours },
-      { label: "Trip Hours", value: totalTripHours },
+      { label: "Our Hours", value: fmtHours(totalHours) },
+      { label: "Trip Hours", value: fmtHours(totalTripHours) },
       { label: "Total Cost", value: INR(totalCost) },
     ], y);
     y = drawTable(doc, ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"],
       sortedLogs.map((l, i) => [i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
         l.vehicleId?.vehicleType || "—", l.driverName || "—",
-        l.openingMeter ?? "—", l.closingMeter ?? "—", l.totalHours ?? 0,
+        l.openingMeter ?? "—", l.closingMeter ?? "—", fmtHours(l.totalHours),
         INR(l.hourlyRate), INR(l.cost),
         l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—"]), y);
   } else { y = drawNoData(doc, y, "No rented machinery logs for this period."); }
