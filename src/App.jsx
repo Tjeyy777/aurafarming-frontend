@@ -44,7 +44,7 @@ import { generateFullExcel } from "./utils/excelGenerator";
 import { fetchAllRentedLogs, fetchAllMachines } from "./utils/exportDataFetcher";
 
 // Pages that should use full viewport width (no Container constraint)
-const FULL_WIDTH_PAGES = ["Weighbridge"];
+const FULL_WIDTH_PAGES = ["Weighbridge", "Rented Logs"];
 
 function App() {
   const [mode, setMode] = useState("dark");

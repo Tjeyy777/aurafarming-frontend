@@ -183,7 +183,7 @@ export function generateExpensesExcel({ expenses = [], period, customDate }) {
   saveWorkbook(wb, `Expenses_Report_${fmtDate(start)}.xlsx`);
 }
 
-export function generateRentedLogsExcel({ logs = [], period, customDate }) {
+export function generateRentedLogsExcel({ logs = [], period, customDate, companyName }) {
   const wb = createWorkbook();
   const { start, end } = getDateRange(period, customDate);
   const filtered = filterByDateRange(logs, start, end, "date");
@@ -196,7 +196,10 @@ export function generateRentedLogsExcel({ logs = [], period, customDate }) {
   const totalHours = fmtHours(mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0));
   const totalTripHours = fmtHours(tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0));
 
+  const companyHeader = companyName ? `Report for ${companyName}` : "Rented Logs Report";
+
   addSheet(wb, "Summary", [
+    [companyHeader],
     ["Main Entries", mainEntries.length],
     ["Trips", tripEntries.length],
     ["Our Hours", totalHours],
@@ -206,11 +209,11 @@ export function generateRentedLogsExcel({ logs = [], period, customDate }) {
 
   addSheet(wb, "Rented Logs", sortedLogs.map((l, i) => [
     i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
-    l.vehicleId?.vehicleType || "—", l.driverName || "—",
+    l.companyId?.name || "—", l.vehicleId?.vehicleType || "—", l.driverName || "—",
     l.openingMeter ?? "—", l.closingMeter ?? "—", fmtHours(l.totalHours),
     l.hourlyRate || 0, l.cost || 0,
     l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—",
-  ]), ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"]);
+  ]), ["#", "Date", "Vehicle", "Company", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"]);
 
   saveWorkbook(wb, `RentedMachinery_Report_${fmtDate(start)}.xlsx`);
 }

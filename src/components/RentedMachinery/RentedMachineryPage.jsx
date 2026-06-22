@@ -25,14 +25,16 @@ import {
   useDeleteRentedLog,
   useCreateTrip,
 } from '../../hooks/useRentedMachinery';
-import ExportDialog, { ExportButton } from '../ExportDialog';
 import { generateRentedLogsPDF } from '../../utils/pdfGenerator';
 import { generateRentedLogsExcel } from '../../utils/excelGenerator';
 import { fetchAllRentedLogs } from '../../utils/exportDataFetcher';
+import PartyManagerDialog from './PartyManagerDialog';
+import { useParties } from '../../hooks/useParties';
+import BusinessIcon from '@mui/icons-material/Business';
+import ExportDialog, { ExportButton } from '../ExportDialog';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const fmtDateTime = (v) => (!v ? '—' : new Date(v).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }));
 const fmtDate = (v) => (!v ? '—' : new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }));
 const fmtNumber = (v) => (v == null ? '—' : Number(v).toLocaleString());
 
@@ -87,8 +89,8 @@ function ColHeader({ headers, showCheckbox, onSelectAll, isAllSelected, isIndete
     <Box sx={{
       display: 'grid',
       gridTemplateColumns: showCheckbox
-        ? '40px 40px 200px 150px 120px 120px 150px 150px 120px 150px 100px'
-        : '40px 200px 150px 120px 120px 150px 150px 120px 150px 100px',
+        ? '40px 40px 200px 150px 150px 120px 120px 150px 150px 120px 150px 100px'
+        : '40px 200px 150px 150px 120px 120px 150px 150px 120px 150px 100px',
       gap: 1,
       px: 1.5,
       py: 1,
@@ -162,11 +164,13 @@ export default function RentedMachineryPage() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [exportOpen, setExportOpen] = useState(false);
+  const [partyManagerOpen, setPartyManagerOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
 
   const [newRow, setNewRow] = useState({
     vehicleId: '',
+    companyId: '',
     date: new Date().toISOString().split('T')[0],
     openingMeter: '',
     closingMeter: '',
@@ -175,6 +179,7 @@ export default function RentedMachineryPage() {
   });
 
   // Queries
+  const { data: parties = [] } = useParties();
   const { data: vehicles = [] } = useRentedVehicles({ status: 'active' });
   const { data: logs = [], isLoading, refetch } = useRentedLogs({
     vehicleId: vehicleFilter !== 'All' ? vehicleFilter : undefined,
@@ -237,6 +242,7 @@ export default function RentedMachineryPage() {
       openingMeter: Number(newRow.openingMeter),
       closingMeter: newRow.closingMeter ? Number(newRow.closingMeter) : null,
       driverName: newRow.driverName,
+      companyId: newRow.companyId || undefined,
       remarks: newRow.remarks,
     });
 
@@ -244,6 +250,7 @@ export default function RentedMachineryPage() {
       enqueueSnackbar('Entry added successfully', { variant: 'success' });
       setNewRow({
         vehicleId: '',
+        companyId: '',
         date: new Date().toISOString().split('T')[0],
         openingMeter: '',
         closingMeter: '',
@@ -259,6 +266,7 @@ export default function RentedMachineryPage() {
       openingMeter: log.openingMeter ?? '',
       closingMeter: log.closingMeter ?? '',
       driverName: log.driverName || '',
+      companyId: log.companyId?._id || '',
       remarks: log.remarks || '',
       tripPurpose: log.tripPurpose || '',
       date: log.date ? new Date(log.date).toISOString().split('T')[0] : '',
@@ -277,6 +285,7 @@ export default function RentedMachineryPage() {
         openingMeter: editForm.openingMeter !== '' ? Number(editForm.openingMeter) : undefined,
         closingMeter: editForm.closingMeter !== '' ? Number(editForm.closingMeter) : null,
         driverName: editForm.driverName,
+        companyId: editForm.companyId || undefined,
         remarks: editForm.remarks,
         tripPurpose: editForm.tripPurpose,
         date: editForm.date,
@@ -326,7 +335,7 @@ export default function RentedMachineryPage() {
 
   const rowSx = (isEditing, isSelected, isTrip) => ({
     display: 'grid',
-    gridTemplateColumns: '40px 40px 200px 150px 120px 120px 150px 150px 120px 150px 100px',
+    gridTemplateColumns: '40px 40px 200px 150px 150px 120px 120px 150px 150px 120px 150px 100px',
     gap: 1,
     px: 1.5,
     py: isEditing ? 1 : 0.75,
@@ -346,7 +355,7 @@ export default function RentedMachineryPage() {
   });
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, mx: "auto", pb: 10, width: "100%" }}>
       {/* Header */}
       <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} sx={{ mb: 3.5, gap: 2 }}>
         <Box>
@@ -365,6 +374,9 @@ export default function RentedMachineryPage() {
             <SearchIcon sx={{ color: 'text.disabled', fontSize: 19, mr: 1 }} />
             <InputBase placeholder="Search..." sx={{ flex: 1, fontSize: '0.85rem' }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </Paper>
+          <Button variant="outlined" startIcon={<BusinessIcon />} onClick={() => setPartyManagerOpen(true)} sx={{ borderRadius: 2, fontWeight: 700 }}>
+            Companies
+          </Button>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={refetch} sx={{ borderRadius: 2, fontWeight: 700 }}>
             Refresh
           </Button>
@@ -445,11 +457,11 @@ export default function RentedMachineryPage() {
       {/* Main Table */}
       <Paper sx={{ borderRadius: 3, p: 3 }}>
         <Box sx={{ overflowX: 'auto' }}>
-          <Box sx={{ minWidth: 1400 }}>
+          <Box sx={{ minWidth: 1600 }}>
             {/* New Entry Form */}
             <Box sx={{
               display: 'grid',
-              gridTemplateColumns: '40px 40px 200px 150px 120px 120px 150px 150px 120px 150px 100px',
+              gridTemplateColumns: '40px 40px 200px 150px 150px 120px 120px 150px 150px 120px 150px 100px',
               gap: 1,
               p: 1.2,
               borderRadius: 2,
@@ -469,6 +481,20 @@ export default function RentedMachineryPage() {
                 {vehicles.map(v => (
                   <MenuItem key={v._id} value={v._id}>
                     {v.vehicleNumber}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                size="small"
+                value={newRow.companyId}
+                onChange={(e) => setNewRow(p => ({ ...p, companyId: e.target.value }))}
+                placeholder="Company"
+              >
+                <MenuItem value="">None</MenuItem>
+                {parties.map(p => (
+                  <MenuItem key={p._id} value={p._id}>
+                    {p.name}
                   </MenuItem>
                 ))}
               </TextField>
@@ -517,7 +543,7 @@ export default function RentedMachineryPage() {
             </Box>
 
             <ColHeader
-              headers={['', 'Vehicle', 'Date', 'Opening', 'Closing', 'Driver', 'Hours', 'Cost', 'Remarks', 'Actions']}
+              headers={['', 'Vehicle', 'Company', 'Date', 'Opening', 'Closing', 'Driver', 'Hours', 'Cost', 'Remarks', 'Actions']}
               showCheckbox
               isAllSelected={selectedIds.length > 0 && selectedIds.length === filteredLogs.length}
               isIndeterminate={selectedIds.length > 0 && selectedIds.length < filteredLogs.length}
@@ -561,6 +587,19 @@ export default function RentedMachineryPage() {
                           <>
                             <RowCell sx={{ fontWeight: 800 }}>{log.vehicleId?.vehicleNumber}</RowCell>
                             <TextField
+                              select
+                              size="small"
+                              value={editForm.companyId}
+                              onChange={(e) => setEditForm(p => ({ ...p, companyId: e.target.value }))}
+                            >
+                              <MenuItem value="">None</MenuItem>
+                              {parties.map(p => (
+                                <MenuItem key={p._id} value={p._id}>
+                                  {p.name}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                            <TextField
                               size="small"
                               type="date"
                               value={editForm.date}
@@ -598,6 +637,7 @@ export default function RentedMachineryPage() {
                         ) : (
                           <>
                             <RowCell sx={{ fontWeight: 800 }}>{log.vehicleId?.vehicleNumber}</RowCell>
+                            <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>{log.companyId?.name || '—'}</RowCell>
                             <RowCell>{fmtDate(log.date)}</RowCell>
                             <RowCell>{fmtNumber(log.openingMeter)}</RowCell>
                             <RowCell>{fmtNumber(log.closingMeter)}</RowCell>
@@ -645,6 +685,19 @@ export default function RentedMachineryPage() {
                                   <>
                                     <RowCell>{log.vehicleId?.vehicleNumber}</RowCell>
                                     <TextField
+                                      select
+                                      size="small"
+                                      value={editForm.companyId}
+                                      onChange={(e) => setEditForm(p => ({ ...p, companyId: e.target.value }))}
+                                    >
+                                      <MenuItem value="">None</MenuItem>
+                                      {parties.map(p => (
+                                        <MenuItem key={p._id} value={p._id}>
+                                          {p.name}
+                                        </MenuItem>
+                                      ))}
+                                    </TextField>
+                                    <TextField
                                       size="small"
                                       type="date"
                                       value={editForm.date}
@@ -683,6 +736,7 @@ export default function RentedMachineryPage() {
                                 ) : (
                                   <>
                                     <RowCell>{log.vehicleId?.vehicleNumber}</RowCell>
+                                    <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>{child.companyId?.name || '—'}</RowCell>
                                     <RowCell>{fmtDate(child.date)}</RowCell>
                                     <RowCell>{fmtNumber(child.openingMeter)}</RowCell>
                                     <RowCell>{fmtNumber(child.closingMeter)}</RowCell>
@@ -739,17 +793,31 @@ export default function RentedMachineryPage() {
         )}
       </Paper>
 
+      <PartyManagerDialog
+        open={partyManagerOpen}
+        onClose={() => setPartyManagerOpen(false)}
+      />
+
       <ExportDialog
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Rented Machinery"
-        onExportPDF={async (period, customDate) => {
-          const allLogs = await fetchAllRentedLogs();
-          generateRentedLogsPDF({ logs: allLogs, period, customDate });
+        companies={parties}
+        onExportPDF={async (period, customDate, selectedCompanyId) => {
+          let allLogs = await fetchAllRentedLogs();
+          if (selectedCompanyId) {
+            allLogs = allLogs.filter(l => l.companyId?._id === selectedCompanyId);
+          }
+          const companyName = parties.find(p => p._id === selectedCompanyId)?.name;
+          generateRentedLogsPDF({ logs: allLogs, period, customDate, companyName });
         }}
-        onExportExcel={async (period, customDate) => {
-          const allLogs = await fetchAllRentedLogs();
-          generateRentedLogsExcel({ logs: allLogs, period, customDate });
+        onExportExcel={async (period, customDate, selectedCompanyId) => {
+          let allLogs = await fetchAllRentedLogs();
+          if (selectedCompanyId) {
+            allLogs = allLogs.filter(l => l.companyId?._id === selectedCompanyId);
+          }
+          const companyName = parties.find(p => p._id === selectedCompanyId)?.name;
+          generateRentedLogsExcel({ logs: allLogs, period, customDate, companyName });
         }}
       />
     </Box>

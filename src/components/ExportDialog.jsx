@@ -22,9 +22,10 @@ import { getDateRange } from "../utils/pdfGenerator";
  * @param {Function} props.onExportPDF - (period, customDate) => void
  * @param {Function} props.onExportExcel - (period, customDate) => void
  */
-export default function ExportDialog({ open, onClose, moduleName, onExportPDF, onExportExcel }) {
+export default function ExportDialog({ open, onClose, moduleName, onExportPDF, onExportExcel, companies }) {
   const [period, setPeriod] = useState("daily");
   const [customDate, setCustomDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [loading, setLoading] = useState(false);
 
   const previewRange = useMemo(() => {
@@ -37,8 +38,8 @@ export default function ExportDialog({ open, onClose, moduleName, onExportPDF, o
     setLoading(true);
     try {
       await new Promise((r) => setTimeout(r, 80));
-      if (type === "pdf") await onExportPDF(period, customDate);
-      else await onExportExcel(period, customDate);
+      if (type === "pdf") await onExportPDF(period, customDate, selectedCompanyId);
+      else await onExportExcel(period, customDate, selectedCompanyId);
     } catch (err) {
       console.error(`${type} export failed:`, err);
     } finally {
@@ -82,6 +83,26 @@ export default function ExportDialog({ open, onClose, moduleName, onExportPDF, o
           label={period === "daily" ? "Select Date" : period === "weekly" ? "Pick any day in the week" : "Pick any day in the month"}
           value={customDate} onChange={(e) => setCustomDate(e.target.value)} fullWidth
           InputLabelProps={{ shrink: true }} sx={{ "& fieldset": { borderRadius: "12px" } }} />
+
+        {/* Company Filter (Optional) */}
+        {companies && (
+          <TextField
+            select
+            label="Select Company (Optional)"
+            value={selectedCompanyId}
+            onChange={(e) => setSelectedCompanyId(e.target.value)}
+            fullWidth
+            SelectProps={{ native: true }}
+            sx={{ "& fieldset": { borderRadius: "12px" } }}
+          >
+            <option value="">All Companies / No Filter</option>
+            {companies.map((company) => (
+              <option key={company._id} value={company._id}>
+                {company.name}
+              </option>
+            ))}
+          </TextField>
+        )}
 
         {/* Preview */}
         <Box sx={{ p: 2, borderRadius: 3, bgcolor: "action.hover", border: "1px dashed", borderColor: "divider" }}>

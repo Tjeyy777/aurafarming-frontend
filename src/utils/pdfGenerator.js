@@ -741,7 +741,7 @@ export function generateExpensesPDF({ expenses = [], period, customDate }) {
   finishModulePDF(doc, "Expenses", periodLabel, start);
 }
 
-export function generateRentedLogsPDF({ logs = [], period, customDate }) {
+export function generateRentedLogsPDF({ logs = [], period, customDate, companyName }) {
   const { doc, start, end, periodLabel } = createModulePDF("RentedMachinery", period, customDate);
   let y = 48;
   const filtered = filterByDateRange(logs, start, end, "date");
@@ -751,7 +751,10 @@ export function generateRentedLogsPDF({ logs = [], period, customDate }) {
   const totalCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
   const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
   const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
-  y = drawSectionTitle(doc, `Rented Machinery Logs (${periodLabel})`, y);
+  
+  const companyTitle = companyName ? `Report for ${companyName}` : `Rented Machinery Logs (${periodLabel})`;
+  y = drawSectionTitle(doc, companyTitle, y);
+  
   if (sortedLogs.length > 0) {
     y = drawSummaryCards(doc, [
       { label: "Main Entries", value: mainEntries.length },
@@ -760,12 +763,11 @@ export function generateRentedLogsPDF({ logs = [], period, customDate }) {
       { label: "Trip Hours", value: fmtHours(totalTripHours) },
       { label: "Total Cost", value: INR(totalCost) },
     ], y);
-    y = drawTable(doc, ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"],
+    y = drawTable(doc, ["#", "Date", "Vehicle", "Company", "Type", "Driver", "Opening", "Closing", "Hours", "Cost (₹)", "Trip?", "Remarks"],
       sortedLogs.map((l, i) => [i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
-        l.vehicleId?.vehicleType || "—", l.driverName || "—",
+        l.companyId?.name || "—", l.vehicleId?.vehicleType || "—", l.driverName || "—",
         l.openingMeter ?? "—", l.closingMeter ?? "—", fmtHours(l.totalHours),
-        INR(l.hourlyRate), INR(l.cost),
-        l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—"]), y);
+        INR(l.cost), l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—"]), y);
   } else { y = drawNoData(doc, y, "No rented machinery logs for this period."); }
   finishModulePDF(doc, "RentedMachinery", periodLabel, start);
 }
