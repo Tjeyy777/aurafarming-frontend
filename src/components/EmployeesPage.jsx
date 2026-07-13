@@ -156,8 +156,19 @@ export default function EmployeesPage() {
       return;
     }
     const payload = { ...formData, dailyWage: Number(formData.dailyWage) };
-    editingId ? updateEmployee({ id: editingId, updatedData: payload }) : addEmployee(payload);
-    handleClose();
+    // Clean empty subRole to null — empty string "" causes Mongoose CastError on ObjectId fields
+    if (!payload.subRole) payload.subRole = null;
+
+    const mutationOptions = {
+      onSuccess: () => handleClose(),
+      onError: (err) => setError(err.response?.data?.message || "Failed to save employee"),
+    };
+
+    if (editingId) {
+      updateEmployee({ id: editingId, updatedData: payload }, mutationOptions);
+    } else {
+      addEmployee(payload, mutationOptions);
+    }
   };
 
   if (isLoading) return <Box sx={{ p: 4, textAlign: 'center' }}><Typography variant="h6">Syncing Database...</Typography></Box>;
