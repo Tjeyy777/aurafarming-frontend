@@ -769,6 +769,18 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
   const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
   const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
   
+  const companyCosts = {};
+  mainEntries.forEach(l => {
+    const cName = l.companyId?.name || "Unassigned";
+    if (!companyCosts[cName]) companyCosts[cName] = 0;
+    companyCosts[cName] += Number(l.cost || 0);
+  });
+  
+  const costCards = Object.keys(companyCosts).map(cName => ({
+    label: `Cost for ${cName}`,
+    value: INR(companyCosts[cName])
+  }));
+  
   const companyTitle = companyName ? `Report for ${companyName}` : `Rented Machinery Logs (${periodLabel})`;
   y = drawSectionTitle(doc, companyTitle, y);
   
@@ -779,12 +791,74 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
       { label: "Our Hours", value: fmtHours(totalHours) },
       { label: "Trip Hours", value: fmtHours(totalTripHours) },
       { label: "Total Cost", value: INR(totalCost) },
+      ...costCards
     ], y);
     y = drawTable(doc, ["#", "Date", "Vehicle", "Company", "Type", "Driver", "Opening", "Closing", "Hours", "Cost (₹)", "Trip?", "Remarks"],
       sortedLogs.map((l, i) => [i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
         l.companyId?.name || "—", l.vehicleId?.vehicleType || "—", l.driverName || "—",
         l.openingMeter ?? "—", l.closingMeter ?? "—", fmtHours(l.totalHours),
         INR(l.cost), l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—"]), y);
+
+    // Daily Report Section
+    const dateGroups = {};
+    mainEntries.forEach(l => {
+      const d = l.date ? l.date.split("T")[0] : null;
+      if (!d) return;
+      if (!dateGroups[d]) dateGroups[d] = [];
+      dateGroups[d].push(l);
+    });
+
+    const dates = Object.keys(dateGroups).sort();
+    if (dates.length > 0) {
+      y = drawSectionTitle(doc, "Daily Report", y);
+      
+      dates.forEach(dateStr => {
+        const dayLogs = dateGroups[dateStr];
+        const dayCompanies = {};
+        dayLogs.forEach(l => {
+          const cName = l.companyId?.name || "Unassigned";
+          if (!dayCompanies[cName]) dayCompanies[cName] = true;
+        });
+        const companyList = Object.keys(dayCompanies).sort();
+        
+        const vehicleGroups = {};
+        dayLogs.forEach(l => {
+          const vName = l.vehicleId?.vehicleNumber || "Unknown";
+          if (!vehicleGroups[vName]) {
+             vehicleGroups[vName] = { totalHours: 0, companies: {} };
+             companyList.forEach(c => vehicleGroups[vName].companies[c] = { hours: 0, cost: 0 });
+          }
+          vehicleGroups[vName].totalHours += Number(l.totalHours || 0);
+          const cName = l.companyId?.name || "Unassigned";
+          vehicleGroups[vName].companies[cName].hours += Number(l.totalHours || 0);
+          vehicleGroups[vName].companies[cName].cost += Number(l.cost || 0);
+        });
+
+        const headers = ["Vehicle Name", "Total Hours", ...companyList];
+        const dataRows = Object.keys(vehicleGroups).map(vName => {
+           const vg = vehicleGroups[vName];
+           return [
+             vName,
+             fmtHours(vg.totalHours),
+             ...companyList.map(cName => {
+                const cData = vg.companies[cName];
+                return cData.hours > 0 ? `${fmtHours(cData.hours)} hrs (${INR(cData.cost)})` : "—";
+             })
+           ];
+        });
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(30, 64, 175);
+        y += 10;
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.text(fmtDate(dateStr), 14, y);
+        y += 5;
+        
+        y = drawTable(doc, headers, dataRows, y);
+      });
+    }
+
   } else { y = drawNoData(doc, y, "No rented machinery logs for this period."); }
   finishModulePDF(doc, "RentedMachinery", periodLabel, start);
 }
