@@ -877,7 +877,7 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
         doc.setFontSize(9.5);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...COLORS.primaryDark);
-        doc.text(fmtDate(dateStr), MARGIN, y + 4);
+        doc.text(fmtDate(dateStr), 14, y + 4);
         y += 8;
 
         y = drawTable(doc, headers, dataRows, y, { fontSize: dayFontSize });
