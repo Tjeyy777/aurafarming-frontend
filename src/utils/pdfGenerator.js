@@ -656,10 +656,27 @@ export function generateWeighbridgePDF({ entries = [], period, customDate }) {
   const completed = filtered.filter(e => e.status === "completed").length;
   y = drawSectionTitle(doc, `Weighbridge (${periodLabel})`, y);
   if (filtered.length > 0) {
+    const uniqueVehicles = new Set(filtered.map(e => e.vehicleNumber)).size;
+    const materialSummary = {};
+    filtered.forEach(e => {
+      if (e.status === "completed") {
+        const mat = e.remarks ? e.remarks.trim() : "Other";
+        if (!materialSummary[mat]) materialSummary[mat] = { trips: 0, weight: 0 };
+        materialSummary[mat].trips += 1;
+        materialSummary[mat].weight += Number(e.netWeight || 0);
+      }
+    });
+    const materialCards = Object.keys(materialSummary).map(mat => ({
+      label: mat.toUpperCase(),
+      value: `${materialSummary[mat].trips} trips, ${materialSummary[mat].weight.toLocaleString("en-IN")} kg`
+    }));
+
     y = drawSummaryCards(doc, [
       { label: "Total Entries", value: filtered.length },
       { label: "Completed", value: completed },
       { label: "Net Weight", value: `${totalNet.toLocaleString("en-IN")} kg` },
+      { label: "Unique Vehicles", value: uniqueVehicles },
+      ...materialCards
     ], y);
     y = drawTable(doc, ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Remarks", "Status", "Entry Time"],
       filtered.map((e, i) => [i + 1, e.vehicleNumber || "—", e.driverName || "—", e.emptyWeight ?? "—",
