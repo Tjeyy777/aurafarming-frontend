@@ -29,8 +29,11 @@ import { generateRentedLogsPDF } from '../../utils/pdfGenerator';
 import { generateRentedLogsExcel } from '../../utils/excelGenerator';
 import { fetchAllRentedLogs } from '../../utils/exportDataFetcher';
 import PartyManagerDialog from './PartyManagerDialog';
+import WorkTypeManagerDialog from './WorkTypeManagerDialog';
 import { useParties } from '../../hooks/useParties';
+import { useWorkTypes } from '../../hooks/useWorkTypes';
 import BusinessIcon from '@mui/icons-material/Business';
+import ConstructionIcon from '@mui/icons-material/Construction';
 import ExportDialog, { ExportButton } from '../ExportDialog';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -89,8 +92,8 @@ function ColHeader({ headers, showCheckbox, onSelectAll, isAllSelected, isIndete
     <Box sx={{
       display: 'grid',
       gridTemplateColumns: showCheckbox
-        ? '40px 40px 200px 150px 150px 120px 120px 150px 150px 120px 150px 100px'
-        : '40px 200px 150px 150px 120px 120px 150px 150px 120px 150px 100px',
+        ? '40px 40px 200px 150px 130px 150px 120px 120px 150px 150px 120px 150px 100px'
+        : '40px 200px 150px 130px 150px 120px 120px 150px 150px 120px 150px 100px',
       gap: 1,
       px: 1.5,
       py: 1,
@@ -165,6 +168,7 @@ export default function RentedMachineryPage() {
   const [editForm, setEditForm] = useState({});
   const [exportOpen, setExportOpen] = useState(false);
   const [partyManagerOpen, setPartyManagerOpen] = useState(false);
+  const [workTypeManagerOpen, setWorkTypeManagerOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
 
@@ -175,11 +179,13 @@ export default function RentedMachineryPage() {
     openingMeter: '',
     closingMeter: '',
     driverName: '',
+    workTypeId: '',
     remarks: '',
   });
 
   // Queries
   const { data: parties = [] } = useParties();
+  const { data: workTypes = [] } = useWorkTypes();
   const { data: vehicles = [] } = useRentedVehicles({ status: 'active' });
   const { data: logs = [], isLoading, refetch } = useRentedLogs({
     vehicleId: vehicleFilter !== 'All' ? vehicleFilter : undefined,
@@ -243,6 +249,7 @@ export default function RentedMachineryPage() {
       closingMeter: newRow.closingMeter ? Number(newRow.closingMeter) : null,
       driverName: newRow.driverName,
       companyId: newRow.companyId || undefined,
+      workTypeId: newRow.workTypeId || undefined,
       remarks: newRow.remarks,
     });
 
@@ -255,6 +262,7 @@ export default function RentedMachineryPage() {
         openingMeter: '',
         closingMeter: '',
         driverName: '',
+        workTypeId: '',
         remarks: '',
       });
     }
@@ -267,6 +275,7 @@ export default function RentedMachineryPage() {
       closingMeter: log.closingMeter ?? '',
       driverName: log.driverName || '',
       companyId: log.companyId?._id || '',
+      workTypeId: log.workTypeId?._id || '',
       remarks: log.remarks || '',
       tripPurpose: log.tripPurpose || '',
       date: log.date ? new Date(log.date).toISOString().split('T')[0] : '',
@@ -286,6 +295,7 @@ export default function RentedMachineryPage() {
         closingMeter: editForm.closingMeter !== '' ? Number(editForm.closingMeter) : null,
         driverName: editForm.driverName,
         companyId: editForm.companyId || undefined,
+        workTypeId: editForm.workTypeId || undefined,
         remarks: editForm.remarks,
         tripPurpose: editForm.tripPurpose,
         date: editForm.date,
@@ -335,7 +345,7 @@ export default function RentedMachineryPage() {
 
   const rowSx = (isEditing, isSelected, isTrip) => ({
     display: 'grid',
-    gridTemplateColumns: '40px 40px 200px 150px 150px 120px 120px 150px 150px 120px 150px 100px',
+    gridTemplateColumns: '40px 40px 200px 150px 130px 150px 120px 120px 150px 150px 120px 150px 100px',
     gap: 1,
     px: 1.5,
     py: isEditing ? 1 : 0.75,
@@ -376,6 +386,9 @@ export default function RentedMachineryPage() {
           </Paper>
           <Button variant="outlined" startIcon={<BusinessIcon />} onClick={() => setPartyManagerOpen(true)} sx={{ borderRadius: 2, fontWeight: 700 }}>
             Companies
+          </Button>
+          <Button variant="outlined" startIcon={<ConstructionIcon />} onClick={() => setWorkTypeManagerOpen(true)} sx={{ borderRadius: 2, fontWeight: 700 }}>
+            Type of Work
           </Button>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={refetch} sx={{ borderRadius: 2, fontWeight: 700 }}>
             Refresh
@@ -461,7 +474,7 @@ export default function RentedMachineryPage() {
             {/* New Entry Form */}
             <Box sx={{
               display: 'grid',
-              gridTemplateColumns: '40px 40px 200px 150px 150px 120px 120px 150px 150px 120px 150px 100px',
+              gridTemplateColumns: '40px 40px 200px 150px 130px 150px 120px 120px 150px 150px 120px 150px 100px',
               gap: 1,
               p: 1.2,
               borderRadius: 2,
@@ -495,6 +508,20 @@ export default function RentedMachineryPage() {
                 {parties.map(p => (
                   <MenuItem key={p._id} value={p._id}>
                     {p.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                size="small"
+                value={newRow.workTypeId}
+                onChange={(e) => setNewRow(p => ({ ...p, workTypeId: e.target.value }))}
+                placeholder="Work Type"
+              >
+                <MenuItem value="">None</MenuItem>
+                {workTypes.map(wt => (
+                  <MenuItem key={wt._id} value={wt._id}>
+                    {wt.name}
                   </MenuItem>
                 ))}
               </TextField>
@@ -543,7 +570,7 @@ export default function RentedMachineryPage() {
             </Box>
 
             <ColHeader
-              headers={['', 'Vehicle', 'Company', 'Date', 'Opening', 'Closing', 'Driver', 'Hours', 'Cost', 'Remarks', 'Actions']}
+              headers={['', 'Vehicle', 'Company', 'Work Type', 'Date', 'Opening', 'Closing', 'Driver', 'Hours', 'Cost', 'Remarks', 'Actions']}
               showCheckbox
               isAllSelected={selectedIds.length > 0 && selectedIds.length === filteredLogs.length}
               isIndeterminate={selectedIds.length > 0 && selectedIds.length < filteredLogs.length}
@@ -600,6 +627,19 @@ export default function RentedMachineryPage() {
                               ))}
                             </TextField>
                             <TextField
+                              select
+                              size="small"
+                              value={editForm.workTypeId}
+                              onChange={(e) => setEditForm(p => ({ ...p, workTypeId: e.target.value }))}
+                            >
+                              <MenuItem value="">None</MenuItem>
+                              {workTypes.map(wt => (
+                                <MenuItem key={wt._id} value={wt._id}>
+                                  {wt.name}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                            <TextField
                               size="small"
                               type="date"
                               value={editForm.date}
@@ -638,6 +678,7 @@ export default function RentedMachineryPage() {
                           <>
                             <RowCell sx={{ fontWeight: 800 }}>{log.vehicleId?.vehicleNumber}</RowCell>
                             <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>{log.companyId?.name || '—'}</RowCell>
+                            <RowCell sx={{ color: 'info.main' }}>{log.workTypeId?.name || '—'}</RowCell>
                             <RowCell>{fmtDate(log.date)}</RowCell>
                             <RowCell>{fmtNumber(log.openingMeter)}</RowCell>
                             <RowCell>{fmtNumber(log.closingMeter)}</RowCell>
@@ -698,6 +739,19 @@ export default function RentedMachineryPage() {
                                       ))}
                                     </TextField>
                                     <TextField
+                                      select
+                                      size="small"
+                                      value={editForm.workTypeId}
+                                      onChange={(e) => setEditForm(p => ({ ...p, workTypeId: e.target.value }))}
+                                    >
+                                      <MenuItem value="">None</MenuItem>
+                                      {workTypes.map(wt => (
+                                        <MenuItem key={wt._id} value={wt._id}>
+                                          {wt.name}
+                                        </MenuItem>
+                                      ))}
+                                    </TextField>
+                                    <TextField
                                       size="small"
                                       type="date"
                                       value={editForm.date}
@@ -737,6 +791,7 @@ export default function RentedMachineryPage() {
                                   <>
                                     <RowCell>{log.vehicleId?.vehicleNumber}</RowCell>
                                     <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>{child.companyId?.name || '—'}</RowCell>
+                                    <RowCell sx={{ color: 'info.main' }}>{child.workTypeId?.name || '—'}</RowCell>
                                     <RowCell>{fmtDate(child.date)}</RowCell>
                                     <RowCell>{fmtNumber(child.openingMeter)}</RowCell>
                                     <RowCell>{fmtNumber(child.closingMeter)}</RowCell>
@@ -796,6 +851,11 @@ export default function RentedMachineryPage() {
       <PartyManagerDialog
         open={partyManagerOpen}
         onClose={() => setPartyManagerOpen(false)}
+      />
+
+      <WorkTypeManagerDialog
+        open={workTypeManagerOpen}
+        onClose={() => setWorkTypeManagerOpen(false)}
       />
 
       <ExportDialog

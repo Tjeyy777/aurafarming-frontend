@@ -365,10 +365,27 @@ export function generateQuarryPDF({
   // ═════════════════════════════════════════════════════════════════════════
   y = drawSectionTitle(doc, `Weighbridge (${periodLabel})`, y);
   if (filteredWeighbridge.length > 0) {
+    const uniqueVehicles = new Set(filteredWeighbridge.map(e => e.vehicleNumber)).size;
+    const materialSummary = {};
+    filteredWeighbridge.forEach(e => {
+      if (e.status === "completed") {
+        const mat = e.remarks ? e.remarks.trim() : "Other";
+        if (!materialSummary[mat]) materialSummary[mat] = { trips: 0, weight: 0 };
+        materialSummary[mat].trips += 1;
+        materialSummary[mat].weight += Number(e.netWeight || 0);
+      }
+    });
+    const materialCards = Object.keys(materialSummary).map(mat => ({
+      label: mat.toUpperCase(),
+      value: `${materialSummary[mat].trips} trips, ${materialSummary[mat].weight.toLocaleString("en-IN")} kg`
+    }));
+
     y = drawSummaryCards(doc, [
       { label: "Total Entries", value: filteredWeighbridge.length },
       { label: "Completed", value: completedTrips },
       { label: "Net Weight", value: `${totalWeighbridgeNetWeight.toLocaleString("en-IN")} kg` },
+      { label: "Unique Vehicles", value: uniqueVehicles },
+      ...materialCards
     ], y);
     y = drawTable(
       doc,

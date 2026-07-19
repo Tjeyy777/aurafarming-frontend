@@ -1,6 +1,6 @@
 // src/utils/excelGenerator.js
 import * as XLSX from "xlsx";
-import { getDateRange, filterByDateRange } from "./pdfGenerator";
+import { filterByDateRange, getDateRange } from "./pdfGenerator";
 
 const INR = (val) => Number(val || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";

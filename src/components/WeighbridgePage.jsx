@@ -371,16 +371,46 @@ export default function WeighbridgePage() {
         </Stack>
       </Stack>
 
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {[
+      {/* Stat Cards */}
+      {(() => {
+        // Compute material breakdown from today's entries
+        const materialBreakdown = {};
+        const uniqueVehiclesToday = new Set();
+        (todayEntries || []).forEach(e => {
+          if (e.vehicleNumber) uniqueVehiclesToday.add(e.vehicleNumber);
+          if (e.status === 'completed') {
+            const mat = e.remarks ? e.remarks.trim() : 'Other';
+            if (!materialBreakdown[mat]) materialBreakdown[mat] = { trips: 0, weight: 0 };
+            materialBreakdown[mat].trips += 1;
+            materialBreakdown[mat].weight += Number(e.netWeight || 0);
+          }
+        });
+
+        const baseCards = [
           { label: "Today's Weight", value: fmtWeight(productionSummary?.daily?.totalNetWeight), icon: ScaleIcon, accent: theme.palette.primary.main },
           { label: "Today's Trips", value: productionSummary?.daily?.totalTrips ?? 0, icon: DirectionsCarIcon, accent: "#10b981" },
+          { label: "Daily Vehicles", value: uniqueVehiclesToday.size, icon: LocalShippingIcon, accent: "#06b6d4" },
           { label: "Weekly Weight", value: fmtWeight(productionSummary?.weekly?.totalNetWeight), icon: TrendingUpIcon, accent: "#f59e0b" },
           { label: "Monthly Weight", value: fmtWeight(productionSummary?.monthly?.totalNetWeight), icon: CalendarMonthIcon, accent: "#8b5cf6" },
-        ].map((s) => (
-          <Grid item xs={12} sm={6} md={3} key={s.label}><StatCard {...s} loading={productionLoading} /></Grid>
-        ))}
-      </Grid>
+        ];
+
+        const materialCards = Object.keys(materialBreakdown).map(mat => ({
+          label: mat.charAt(0).toUpperCase() + mat.slice(1),
+          value: `${materialBreakdown[mat].trips} trips · ${materialBreakdown[mat].weight.toLocaleString()} kg`,
+          icon: ScaleIcon,
+          accent: "#ec4899",
+        }));
+
+        const allCards = [...baseCards, ...materialCards];
+
+        return (
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            {allCards.map((s) => (
+              <Grid item xs={12} sm={6} md={3} key={s.label}><StatCard {...s} loading={productionLoading} /></Grid>
+            ))}
+          </Grid>
+        );
+      })()}
 
       <Card sx={{ borderRadius: "16px", mb: 2.5 }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 1.5 }}>
