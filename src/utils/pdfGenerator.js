@@ -18,10 +18,21 @@ const COLORS = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const INR = (val) => `₹${Number(val || 0).toLocaleString("en-IN")}`;
+// NOTE: jsPDF's built-in "helvetica" font has no glyph for ₹, which is why it
+// was rendering as a broken "¹" character. Standard fonts can't show ₹ unless
+// you embed a Unicode font (adds ~200KB+ to your bundle as base64). Using
+// "Rs." is the safe, zero-dependency fix. If you'd rather have the real ₹
+// glyph, say so and I'll wire up an embedded font instead.
+const INR = (val) => `Rs. ${Number(val || 0).toLocaleString("en-IN")}`;
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—";
 const fmtHours = (val) => Number(Number(val || 0).toFixed(3));
+
+// Cost for a single log entry, computed fresh from hours × hourly rate.
+// This is used everywhere cost totals are shown (cards + tables) instead of
+// trusting the stored `cost` field, because trip entries were being saved
+// with cost = 0 even though they consumed billable hours on the vehicle.
+const calcEntryCost = (l) => Number(l.totalHours || 0) * Number(l.hourlyRate || 0);
 
 // ─── Get date range based on period and custom date ──────────────────────────
 export const getDateRange = (period, customDate) => {
@@ -35,7 +46,7 @@ export const getDateRange = (period, customDate) => {
       end = new Date(startOfDay);
       end.setHours(23, 59, 59, 999);
       break;
-    case "weekly":
+    case "weekly": {
       // Get the Monday of the week containing the base date
       const dayOfWeek = startOfDay.getDay();
       const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday = 0
@@ -45,6 +56,7 @@ export const getDateRange = (period, customDate) => {
       end.setDate(end.getDate() + 6);
       end.setHours(23, 59, 59, 999);
       break;
+    }
     case "monthly":
       start = new Date(base.getFullYear(), base.getMonth(), 1);
       end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
@@ -81,7 +93,7 @@ function drawHeader(doc, periodLabel, dateRangeStr) {
   doc.setTextColor(...COLORS.white);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text("Aura Farming Solutions Pvt. Ltd. ", 14, 22);
+  doc.text("Aura Farming Solutions Pvt. Ltd.", 14, 22);
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
@@ -102,7 +114,7 @@ function drawHeader(doc, periodLabel, dateRangeStr) {
 }
 
 // ─── Draw a section title ────────────────────────────────────────────────────
-function drawSectionTitle(doc, title, y, icon) {
+function drawSectionTitle(doc, title, y, subLabel) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
@@ -121,6 +133,14 @@ function drawSectionTitle(doc, title, y, icon) {
   doc.setTextColor(...COLORS.dark);
   doc.text(title, 21, y + 7);
 
+  if (subLabel) {
+    const titleW = doc.getTextWidth(title);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COLORS.textLight);
+    doc.text(`(${subLabel})`, 21 + titleW + 4, y + 7);
+  }
+
   // Divider
   doc.setDrawColor(...COLORS.border);
   doc.setLineWidth(0.3);
@@ -129,47 +149,82 @@ function drawSectionTitle(doc, title, y, icon) {
   return y + 18;
 }
 
-// ─── Draw summary cards (compact inline) ─────────────────────────────────────
+// ─── Draw summary cards (auto-fits font size, wraps to multiple rows) ────────
 function drawSummaryCards(doc, cards, y) {
+  if (!cards || cards.length === 0) return y;
+
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 14;
+  const gap = 3;
   const availableW = pageW - margin * 2;
-  const cardW = Math.min(availableW / cards.length - 3, 55);
+  const minCardW = 34;
+  const maxCardW = 52;
   const cardH = 18;
 
-  if (y + cardH + 5 > pageH - 20) {
+  // How many cards fit per row without going below the minimum readable width
+  let perRow = Math.floor((availableW + gap) / (minCardW + gap));
+  perRow = Math.max(1, Math.min(perRow, cards.length));
+  const cardW = Math.min(maxCardW, (availableW - (perRow - 1) * gap) / perRow);
+
+  const rows = Math.ceil(cards.length / perRow);
+  const neededH = rows * cardH + (rows - 1) * gap;
+
+  if (y + neededH > pageH - 20) {
     doc.addPage();
     y = 14;
   }
 
   cards.forEach((card, i) => {
-    const x = margin + i * (cardW + 3);
+    const rowIdx = Math.floor(i / perRow);
+    const colIdx = i % perRow;
+    const x = margin + colIdx * (cardW + gap);
+    const cy = y + rowIdx * (cardH + gap);
 
     // Card background
     doc.setFillColor(...COLORS.bg);
     doc.setDrawColor(...COLORS.border);
     doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, cardW, cardH, 2, 2, "FD");
+    doc.roundedRect(x, cy, cardW, cardH, 2, 2, "FD");
 
-    // Label
-    doc.setFontSize(6);
+    // Label — shrink to fit on one line, truncate with ellipsis if still too long
+    let labelFontSize = 6;
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(labelFontSize);
+    let label = card.label.toUpperCase();
+    const maxLabelW = cardW - 6;
+    while (labelFontSize > 4.5 && doc.getTextWidth(label) > maxLabelW) {
+      labelFontSize -= 0.5;
+      doc.setFontSize(labelFontSize);
+    }
+    while (doc.getTextWidth(label) > maxLabelW && label.length > 3) {
+      label = label.slice(0, -1);
+    }
+    if (label !== card.label.toUpperCase() && doc.getTextWidth(label + "…") <= maxLabelW) {
+      label += "…";
+    }
     doc.setTextColor(...COLORS.textLight);
-    doc.text(card.label.toUpperCase(), x + 4, y + 6);
+    doc.text(label, x + 3, cy + 6);
 
-    // Value
-    doc.setFontSize(10);
+    // Value — auto-fit font size so amounts never wrap to a second line
+    let valueFontSize = 10;
+    const valueStr = String(card.value);
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(valueFontSize);
+    const maxValueW = cardW - 6;
+    while (valueFontSize > 6 && doc.getTextWidth(valueStr) > maxValueW) {
+      valueFontSize -= 0.5;
+      doc.setFontSize(valueFontSize);
+    }
     doc.setTextColor(...COLORS.dark);
-    doc.text(String(card.value), x + 4, y + 13);
+    doc.text(valueStr, x + 3, cy + 14);
   });
 
-  return y + cardH + 6;
+  return y + rows * cardH + (rows - 1) * gap + 6;
 }
 
 // ─── Draw a table using autoTable ────────────────────────────────────────────
-function drawTable(doc, head, body, y) {
+function drawTable(doc, head, body, y, opts = {}) {
   const pageH = doc.internal.pageSize.getHeight();
 
   if (y > pageH - 30) {
@@ -177,25 +232,32 @@ function drawTable(doc, head, body, y) {
     y = 14;
   }
 
+  const fontSize = opts.fontSize || 7;
+
   autoTable(doc, {
     startY: y,
     head: [head],
     body: body,
-    margin: { left: 14, right: 14 },
+    margin: { left: 10, right: 10 },
+    tableWidth: "auto",
     styles: {
-      fontSize: 7,
-      cellPadding: 3,
+      fontSize,
+      cellPadding: 2.5,
       textColor: COLORS.text,
       lineColor: COLORS.border,
       lineWidth: 0.2,
+      overflow: "linebreak",
+      valign: "middle",
     },
     headStyles: {
       fillColor: COLORS.dark,
       textColor: COLORS.white,
       fontStyle: "bold",
-      fontSize: 7,
+      fontSize: Math.max(fontSize, 6.5),
       halign: "left",
+      cellPadding: 2.5,
     },
+    columnStyles: opts.columnStyles || {},
     alternateRowStyles: {
       fillColor: [248, 250, 252],
     },
@@ -313,7 +375,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Name", "Role", "Daily Wage (₹)", "Phone", "Status"],
+      ["#", "Name", "Role", "Daily Wage", "Phone", "Status"],
       employees.slice(0, 100).map((e, i) => [
         i + 1,
         e.name || "—",
@@ -345,7 +407,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate (₹)"],
+      ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate"],
       filteredAttendance.slice(0, 200).map((a, i) => [
         i + 1,
         fmtDate(a.date),
@@ -418,7 +480,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost (₹)", "Total Value (₹)"],
+      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost", "Total Value"],
       explosiveItems.map((item, i) => [
         i + 1,
         item.name || "—",
@@ -445,7 +507,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost (₹)", "Total Value (₹)"],
+      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost", "Total Value"],
       consumableItems.map((item, i) => [
         i + 1,
         item.name || "—",
@@ -500,7 +562,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "For", "Litres", "Rate/L (₹)", "Total Cost (₹)"],
+      ["#", "Date", "For", "Litres", "Rate/L", "Total Cost"],
       filteredDiesel.map((e, i) => [
         i + 1,
         fmtDate(e.date),
@@ -526,7 +588,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Expense Name", "Category", "Amount (₹)", "Notes"],
+      ["#", "Date", "Expense Name", "Category", "Amount", "Notes"],
       filteredExpenses.map((e, i) => [
         i + 1,
         fmtDate(e.date),
@@ -549,7 +611,10 @@ export function generateQuarryPDF({
     const sortedRentedLogs = [...filteredRentedLogs].reverse();
     const mainEntries = sortedRentedLogs.filter((l) => !l.isTrip);
     const tripEntries = sortedRentedLogs.filter((l) => l.isTrip);
-    const totalRentedCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
+    // Cost is recomputed from hours × hourly rate for every entry (main AND
+    // trip) rather than trusting the stored `cost` field, so trip hours are
+    // no longer silently dropped from the totals.
+    const totalRentedCost = sortedRentedLogs.reduce((s, l) => s + calcEntryCost(l), 0);
     const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
     const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
     y = drawSummaryCards(doc, [
@@ -561,7 +626,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"],
+      ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr", "Cost", "Trip?", "Remarks"],
       sortedRentedLogs.map((l, i) => [
         i + 1,
         fmtDate(l.date),
@@ -572,7 +637,7 @@ export function generateQuarryPDF({
         l.closingMeter ?? "—",
         fmtHours(l.totalHours),
         INR(l.hourlyRate),
-        INR(l.cost),
+        INR(calcEntryCost(l)),
         l.isTrip ? "Yes" : "No",
         l.remarks || l.tripPurpose || "—",
       ]),
@@ -598,11 +663,11 @@ export function generateQuarryPDF({
 // PER-MODULE PDF GENERATORS
 // ═════════════════════════════════════════════════════════════════════════════
 
-function createModulePDF(moduleName, period, customDate) {
+function createModulePDF(moduleName, period, customDate, orientation = "portrait") {
   const { start, end } = getDateRange(period, customDate);
   const periodLabel = period === "daily" ? "Daily" : period === "weekly" ? "Weekly" : "Monthly";
   const dateRangeStr = `${fmtDate(start)} — ${fmtDate(end)}`;
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = new jsPDF({ orientation, unit: "mm", format: "a4" });
   let y = drawHeader(doc, `${periodLabel} — ${moduleName}`, dateRangeStr);
   return { doc, y, start, end, periodLabel };
 }
@@ -622,7 +687,7 @@ export function generateEmployeesPDF({ employees = [], period, customDate }) {
       { label: "Inactive", value: employees.filter(e => !e.isActive).length },
       { label: "Total", value: employees.length },
     ], y);
-    y = drawTable(doc, ["#", "Name", "Role", "Sub-Role", "Daily Wage (₹)", "Phone", "Status", "Aadhar"],
+    y = drawTable(doc, ["#", "Name", "Role", "Sub-Role", "Daily Wage", "Phone", "Status", "Aadhar"],
       employees.map((e, i) => [i + 1, e.name || "—", e.role?.title || "—", e.subRole?.title || "—",
         INR(e.dailyWage), e.phone || "—", e.isActive ? "Active" : "Inactive", e.aadharNumber || "—"]), y);
   } else { y = drawNoData(doc, y); }
@@ -641,7 +706,7 @@ export function generateAttendancePDF({ records = [], period, customDate }) {
       { label: "Total", value: records.length },
       { label: "OT Hours", value: fmtHours(records.reduce((s, a) => s + Number(a.overtimeHour || 0), 0)) },
     ], y);
-    y = drawTable(doc, ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate (₹)"],
+    y = drawTable(doc, ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate"],
       records.map((a, i) => [i + 1, fmtDate(a.date), a.employeeId?.name || "—",
         (a.status || "—").toUpperCase(), fmtHours(a.overtimeHour), INR(a.perHourRate)]), y);
   } else { y = drawNoData(doc, y, "No attendance records for this period."); }
@@ -696,7 +761,7 @@ export function generateExplosivesPDF({ items = [], period, customDate }) {
       { label: "Total Items", value: items.length },
       { label: "Inventory Value", value: INR(totalValue) },
     ], y);
-    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost (₹)", "Value (₹)"],
+    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost", "Value"],
       items.map((item, i) => [i + 1, item.name || "—", item.category || "—", item.currentStock ?? 0,
         item.unit || "—", INR(item.unitCost), INR((item.currentStock || 0) * (item.unitCost || 0))]), y);
   } else { y = drawNoData(doc, y); }
@@ -713,7 +778,7 @@ export function generateConsumablesPDF({ items = [], period, customDate }) {
       { label: "Total Items", value: items.length },
       { label: "Inventory Value", value: INR(totalValue) },
     ], y);
-    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost (₹)", "Value (₹)"],
+    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost", "Value"],
       items.map((item, i) => [i + 1, item.name || "—", item.category || "—", item.currentStock ?? 0,
         item.unit || "—", INR(item.unitCost), INR((item.currentStock || 0) * (item.unitCost || 0))]), y);
   } else { y = drawNoData(doc, y); }
@@ -749,7 +814,7 @@ export function generateDieselPDF({ entries = [], period, customDate }) {
       { label: "Total Cost", value: INR(totalC) },
       { label: "Entries", value: filtered.length },
     ], y);
-    y = drawTable(doc, ["#", "Date", "For", "Litres", "Rate/L (₹)", "Total Cost (₹)"],
+    y = drawTable(doc, ["#", "Date", "For", "Litres", "Rate/L", "Total Cost"],
       filtered.map((e, i) => [i + 1, fmtDate(e.date),
         e.dieselFor === "machine" ? (e.machineId?.machineName || "Machine") : (e.expenseName || "—"),
         e.litres ?? "—", INR(e.pricePerLitre), INR(e.totalCost)]), y);
@@ -768,29 +833,40 @@ export function generateExpensesPDF({ expenses = [], period, customDate }) {
       { label: "Total Amount", value: INR(total) },
       { label: "Entries", value: filtered.length },
     ], y);
-    y = drawTable(doc, ["#", "Date", "Expense Name", "Category", "Amount (₹)", "Notes"],
+    y = drawTable(doc, ["#", "Date", "Expense Name", "Category", "Amount", "Notes"],
       filtered.map((e, i) => [i + 1, fmtDate(e.date), e.expenseName || "—",
         e.category || "—", INR(e.amount), e.notes || "—"]), y);
   } else { y = drawNoData(doc, y, "No expense entries for this period."); }
   finishModulePDF(doc, "Expenses", periodLabel, start);
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// RENTED MACHINERY LOGS — landscape orientation (12+ columns need the room),
+// with cost recomputed from hours × hourly rate everywhere it's shown.
+// ═════════════════════════════════════════════════════════════════════════════
 export function generateRentedLogsPDF({ logs = [], period, customDate, companyName }) {
-  const { doc, start, end, periodLabel } = createModulePDF("RentedMachinery", period, customDate);
+  const { doc, start, end, periodLabel } = createModulePDF("RentedMachinery", period, customDate, "landscape");
   let y = 44;
   const filtered = filterByDateRange(logs, start, end, "date");
   const sortedLogs = [...filtered].reverse();
   const mainEntries = sortedLogs.filter((l) => !l.isTrip);
   const tripEntries = sortedLogs.filter((l) => l.isTrip);
-  const totalCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
+
+  // Hours stay split (main vs trip) for the info cards, but cost is summed
+  // across ALL entries — a vehicle's trip hours are still billable at its
+  // hourly rate, they just weren't being counted before.
   const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
   const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
+  const totalCost = sortedLogs.reduce((s, l) => s + calcEntryCost(l), 0);
 
+  // Per-company total cost = sum, over every vehicle that company used, of
+  // (that vehicle's total hours × its hourly rate) — i.e. every entry for
+  // that company, main or trip, recomputed the same way.
   const companyCosts = {};
-  mainEntries.forEach(l => {
+  sortedLogs.forEach(l => {
     const cName = l.companyId?.name || "Unassigned";
     if (!companyCosts[cName]) companyCosts[cName] = 0;
-    companyCosts[cName] += Number(l.cost || 0);
+    companyCosts[cName] += calcEntryCost(l);
   });
 
   const costCards = Object.keys(companyCosts).map(cName => ({
@@ -809,13 +885,44 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
       { label: "Total Cost", value: INR(totalCost) },
       ...costCards
     ], y);
-    y = drawTable(doc, ["#", "Date", "Vehicle", "Company", "Type", "Driver", "Opening", "Closing", "Hours", "Cost", "Trip?", "Remarks"],
-      sortedLogs.map((l, i) => [i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
-        l.companyId?.name || "—", l.vehicleId?.vehicleType || "—", l.driverName || "—",
-        l.openingMeter ?? "—", l.closingMeter ?? "—", fmtHours(l.totalHours),
-        INR(l.cost), l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—"]),
+
+    y = drawTable(
+      doc,
+      ["#", "Date", "Vehicle", "Company", "Type", "Driver", "Rate/Hr", "Opening", "Closing", "Hours", "Cost", "Trip?", "Remarks"],
+      sortedLogs.map((l, i) => [
+        i + 1,
+        fmtDate(l.date),
+        l.vehicleId?.vehicleNumber || "—",
+        l.companyId?.name || "—",
+        l.vehicleId?.vehicleType || "—",
+        l.driverName || "—",
+        INR(l.hourlyRate),
+        l.openingMeter ?? "—",
+        l.closingMeter ?? "—",
+        fmtHours(l.totalHours),
+        INR(calcEntryCost(l)),
+        l.isTrip ? "Yes" : "No",
+        l.remarks || l.tripPurpose || "—",
+      ]),
       y,
-      { fontSize: 6.8 }
+      {
+        fontSize: 7.2,
+        columnStyles: {
+          0: { cellWidth: 7, halign: "center" },
+          1: { cellWidth: 18 },
+          2: { cellWidth: 24 },
+          3: { cellWidth: 22 },
+          4: { cellWidth: 16 },
+          5: { cellWidth: 20 },
+          6: { cellWidth: 16, halign: "right" },
+          7: { cellWidth: 16, halign: "right" },
+          8: { cellWidth: 16, halign: "right" },
+          9: { cellWidth: 14, halign: "right" },
+          10: { cellWidth: 20, halign: "right" },
+          11: { cellWidth: 12, halign: "center" },
+          // 12 "Remarks" left to auto-fill remaining width
+        },
+      }
     );
 
     // Daily Report Section
@@ -850,7 +957,7 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
           vehicleGroups[vName].totalHours += Number(l.totalHours || 0);
           const cName = l.companyId?.name || "Unassigned";
           vehicleGroups[vName].companies[cName].hours += Number(l.totalHours || 0);
-          vehicleGroups[vName].companies[cName].cost += Number(l.cost || 0);
+          vehicleGroups[vName].companies[cName].cost += calcEntryCost(l);
         });
 
         const headers = ["Vehicle", "Total Hrs", ...companyList];
@@ -869,7 +976,7 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
         // Auto-shrink font size as more company columns are added, so the
         // table never overflows the page width regardless of company count.
         const totalCols = headers.length;
-        const dayFontSize = totalCols > 8 ? 5.5 : totalCols > 5 ? 6.2 : 7;
+        const dayFontSize = totalCols > 10 ? 6 : totalCols > 6 ? 6.8 : 7.5;
 
         const pageH = doc.internal.pageSize.getHeight();
         if (y + 14 > pageH - 20) { doc.addPage(); y = 20; }
@@ -880,7 +987,13 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
         doc.text(fmtDate(dateStr), 14, y + 4);
         y += 8;
 
-        y = drawTable(doc, headers, dataRows, y, { fontSize: dayFontSize });
+        y = drawTable(doc, headers, dataRows, y, {
+          fontSize: dayFontSize,
+          columnStyles: {
+            0: { cellWidth: 32 },
+            1: { cellWidth: 20, halign: "right" },
+          },
+        });
       });
     }
 
