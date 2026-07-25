@@ -74,12 +74,15 @@ export async function fetchAllEmployees() {
  * Loops through each day and accumulates the results.
  */
 export async function fetchAllAttendanceForRange(startDate, endDate) {
+  const toLocalDateStr = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
   const days = [];
   const cur = new Date(startDate);
   const end = new Date(endDate);
-  
+
   while (cur <= end) {
-    days.push(cur.toISOString().split("T")[0]);
+    days.push(toLocalDateStr(cur));
     cur.setDate(cur.getDate() + 1);
   }
   

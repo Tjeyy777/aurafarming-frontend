@@ -26,7 +26,11 @@ export default function AttendancePage() {
   const [tab, setTab] = useState("daily");
 
   // ─── Daily tab state ───
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const getLocalTodayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const [selectedDate, setSelectedDate] = useState(getLocalTodayStr());
   const [userChanges, setUserChanges] = useState({});
   const [alreadySaved, setAlreadySaved] = useState(false);
   const [isFetchingDate, setIsFetchingDate] = useState(false);

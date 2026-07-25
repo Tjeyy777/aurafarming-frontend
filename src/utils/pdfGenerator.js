@@ -395,27 +395,44 @@ export function generateQuarryPDF({
   // ═════════════════════════════════════════════════════════════════════════
   y = drawSectionTitle(doc, `Attendance (${periodLabel})`, y);
   if (filteredAttendance.length > 0) {
-    const presentCount = filteredAttendance.filter((a) => a.status === "present").length;
-    const absentCount = filteredAttendance.filter((a) => a.status === "absent").length;
-    const totalOT = filteredAttendance.reduce((s, a) => s + Number(a.overtimeHour || 0), 0);
+    // Sort by date then employee name for readability
+    const sortedAttendance = [...filteredAttendance].sort((a, b) => {
+      const dA = new Date(a.date), dB = new Date(b.date);
+      if (dA - dB !== 0) return dA - dB;
+      return (a.employeeId?.name || "").localeCompare(b.employeeId?.name || "");
+    });
+    const presentCount = sortedAttendance.filter((a) => a.status === "present").length;
+    const absentCount = sortedAttendance.filter((a) => a.status === "absent").length;
+    const totalOT = sortedAttendance.reduce((s, a) => s + Number(a.overtimeHour || 0), 0);
+    const totalWages = sortedAttendance.reduce((s, a) => s + Number(a.wage || 0), 0);
 
     y = drawSummaryCards(doc, [
       { label: "Present", value: presentCount },
       { label: "Absent", value: absentCount },
-      { label: "Total Records", value: filteredAttendance.length },
+      { label: "Total Records", value: sortedAttendance.length },
       { label: "OT Hours", value: fmtHours(totalOT) },
+      { label: "Total Wages", value: INR(totalWages) },
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate"],
-      filteredAttendance.slice(0, 200).map((a, i) => [
-        i + 1,
-        fmtDate(a.date),
-        a.employeeId?.name || "—",
-        (a.status || "—").toUpperCase(),
-        fmtHours(a.overtimeHour),
-        INR(a.perHourRate),
-      ]),
+      ["#", "Date", "Employee", "Status", "Daily Wage", "OT Hrs", "OT Pay", "Total Pay"],
+      sortedAttendance.slice(0, 200).map((a, i) => {
+        const dailyWage = a.employeeId?.dailyWage || 0;
+        const otHours = Number(a.overtimeHour || 0);
+        const otRate = Number(a.perHourRate || 0);
+        const otPay = a.status === "present" ? otHours * otRate : 0;
+        const basePay = a.status === "present" ? dailyWage : 0;
+        return [
+          i + 1,
+          fmtDate(a.date),
+          a.employeeId?.name || "—",
+          (a.status || "—").toUpperCase(),
+          INR(basePay),
+          fmtHours(otHours),
+          INR(otPay),
+          INR(Number(a.wage || (basePay + otPay))),
+        ];
+      }),
       y
     );
   } else {
@@ -699,16 +716,38 @@ export function generateAttendancePDF({ records = [], period, customDate }) {
   let y = 48;
   y = drawSectionTitle(doc, `Attendance (${periodLabel})`, y);
   if (records.length > 0) {
-    const present = records.filter(a => a.status === "present").length;
+    // Sort by date then employee name
+    const sorted = [...records].sort((a, b) => {
+      const dA = new Date(a.date), dB = new Date(b.date);
+      if (dA - dB !== 0) return dA - dB;
+      return (a.employeeId?.name || "").localeCompare(b.employeeId?.name || "");
+    });
+    const present = sorted.filter(a => a.status === "present").length;
+    const absent = sorted.filter(a => a.status === "absent").length;
+    const totalOT = sorted.reduce((s, a) => s + Number(a.overtimeHour || 0), 0);
+    const totalWages = sorted.reduce((s, a) => s + Number(a.wage || 0), 0);
     y = drawSummaryCards(doc, [
       { label: "Present", value: present },
-      { label: "Absent", value: records.filter(a => a.status === "absent").length },
-      { label: "Total", value: records.length },
-      { label: "OT Hours", value: fmtHours(records.reduce((s, a) => s + Number(a.overtimeHour || 0), 0)) },
+      { label: "Absent", value: absent },
+      { label: "Total", value: sorted.length },
+      { label: "OT Hours", value: fmtHours(totalOT) },
+      { label: "Total Wages", value: INR(totalWages) },
     ], y);
-    y = drawTable(doc, ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate"],
-      records.map((a, i) => [i + 1, fmtDate(a.date), a.employeeId?.name || "—",
-        (a.status || "—").toUpperCase(), fmtHours(a.overtimeHour), INR(a.perHourRate)]), y);
+    y = drawTable(doc, ["#", "Date", "Employee", "Role", "Status", "Daily Wage", "OT Hrs", "OT Pay", "Total Pay"],
+      sorted.map((a, i) => {
+        const dailyWage = a.employeeId?.dailyWage || 0;
+        const otHours = Number(a.overtimeHour || 0);
+        const otRate = Number(a.perHourRate || 0);
+        const otPay = a.status === "present" ? otHours * otRate : 0;
+        const basePay = a.status === "present" ? dailyWage : 0;
+        return [
+          i + 1, fmtDate(a.date), a.employeeId?.name || "—",
+          a.employeeId?.role?.title || "—",
+          (a.status || "—").toUpperCase(),
+          INR(basePay), fmtHours(otHours), INR(otPay),
+          INR(Number(a.wage || (basePay + otPay))),
+        ];
+      }), y);
   } else { y = drawNoData(doc, y, "No attendance records for this period."); }
   finishModulePDF(doc, "Attendance", periodLabel, start);
 }

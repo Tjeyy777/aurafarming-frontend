@@ -44,22 +44,41 @@ export function generateAttendanceExcel({ records = [], period, customDate }) {
   const wb = createWorkbook();
   const { start, end } = getDateRange(period, customDate);
 
-  const present = records.filter((a) => a.status === "present").length;
-  const absent = records.filter((a) => a.status === "absent").length;
+  // Sort by date then employee name
+  const sorted = [...records].sort((a, b) => {
+    const dA = new Date(a.date), dB = new Date(b.date);
+    if (dA - dB !== 0) return dA - dB;
+    return (a.employeeId?.name || "").localeCompare(b.employeeId?.name || "");
+  });
+
+  const present = sorted.filter((a) => a.status === "present").length;
+  const absent = sorted.filter((a) => a.status === "absent").length;
+  const totalWages = sorted.reduce((s, a) => s + Number(a.wage || 0), 0);
 
   // Summary sheet
   addSheet(wb, "Summary", [
     ["Present", present],
     ["Absent", absent],
-    ["Total Records", records.length],
-    ["OT Hours", fmtHours(records.reduce((s, a) => s + Number(a.overtimeHour || 0), 0))],
+    ["Total Records", sorted.length],
+    ["OT Hours", fmtHours(sorted.reduce((s, a) => s + Number(a.overtimeHour || 0), 0))],
+    ["Total Wages (₹)", totalWages],
   ], ["Metric", "Value"]);
 
   // Detail sheet
-  addSheet(wb, "Attendance Records", records.map((a, i) => [
-    i + 1, fmtDate(a.date), a.employeeId?.name || "—",
-    (a.status || "—").toUpperCase(), fmtHours(a.overtimeHour), a.perHourRate || 0,
-  ]), ["#", "Date", "Employee", "Status", "OT Hours", "Per Hr Rate (₹)"]);
+  addSheet(wb, "Attendance Records", sorted.map((a, i) => {
+    const dailyWage = a.employeeId?.dailyWage || 0;
+    const otHours = Number(a.overtimeHour || 0);
+    const otRate = Number(a.perHourRate || 0);
+    const otPay = a.status === "present" ? otHours * otRate : 0;
+    const basePay = a.status === "present" ? dailyWage : 0;
+    return [
+      i + 1, fmtDate(a.date), a.employeeId?.name || "—",
+      a.employeeId?.role?.title || "—",
+      (a.status || "—").toUpperCase(),
+      basePay, otHours, otRate, otPay,
+      Number(a.wage || (basePay + otPay)),
+    ];
+  }), ["#", "Date", "Employee", "Role", "Status", "Daily Wage (₹)", "OT Hours", "OT Rate (₹)", "OT Pay (₹)", "Total Pay (₹)"]);
 
   saveWorkbook(wb, `Attendance_Report_${fmtDate(start)}.xlsx`);
 }
@@ -251,9 +270,18 @@ export function generateFullExcel({
 
   // Attendance
   if (filteredAttendance.length > 0) {
-    addSheet(wb, "Attendance", filteredAttendance.map((a, i) => [
-      i + 1, fmtDate(a.date), a.employeeId?.name || "—", (a.status || "—").toUpperCase(), fmtHours(a.overtimeHour),
-    ]), ["#", "Date", "Employee", "Status", "OT Hours"]);
+    addSheet(wb, "Attendance", filteredAttendance.map((a, i) => {
+      const dailyWage = a.employeeId?.dailyWage || 0;
+      const otHours = Number(a.overtimeHour || 0);
+      const otRate = Number(a.perHourRate || 0);
+      const otPay = a.status === "present" ? otHours * otRate : 0;
+      const basePay = a.status === "present" ? dailyWage : 0;
+      return [
+        i + 1, fmtDate(a.date), a.employeeId?.name || "—",
+        (a.status || "—").toUpperCase(), basePay, fmtHours(otHours), otPay,
+        Number(a.wage || (basePay + otPay)),
+      ];
+    }), ["#", "Date", "Employee", "Status", "Daily Wage (₹)", "OT Hours", "OT Pay (₹)", "Total Pay (₹)"]);
   }
 
   // Weighbridge
