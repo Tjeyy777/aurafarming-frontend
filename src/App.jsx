@@ -27,6 +27,7 @@ import WeighbridgePage from "./components/WeighbridgePage";
 import RentedMachineryPage from "./components/RentedMachinery/RentedMachineryPage";
 import RentedVehicleMasterPage from "./components/RentedMachinery/RentedVehicalMasterPage";
 import TeamManagementPage from "./components/TeamManagementPage";
+import ProfitDashboard from "./components/ProfitDashboard";
 
 // Hooks for PDF summary
 import { useInventory } from "./hooks/useInventory";
@@ -218,6 +219,7 @@ function App() {
 
   const renderPage = () => {
     switch (currentPage) {
+      case "Dashboard":   return <ProfitDashboard />;
       case "Employees":   return <EmployeesPage />;
       case "Attendance":  return <AttendancePage />;
       case "Explosives":  return <ExplosivesPage />;

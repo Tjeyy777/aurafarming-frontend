@@ -448,7 +448,7 @@ export function generateQuarryPDF({
     const materialSummary = {};
     filteredWeighbridge.forEach(e => {
       if (e.status === "completed") {
-        const mat = e.remarks ? e.remarks.trim() : "Other";
+        const mat = e.materialId?.name || (e.remarks ? e.remarks.trim() : "Other");
         if (!materialSummary[mat]) materialSummary[mat] = { trips: 0, weight: 0 };
         materialSummary[mat].trips += 1;
         materialSummary[mat].weight += Number(e.netWeight || 0);
@@ -468,7 +468,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Remarks", "Status", "Entry Time"],
+      ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Material", "Status", "Entry Time"],
       filteredWeighbridge.slice(0, 200).map((e, i) => [
         i + 1,
         e.vehicleNumber || "—",
@@ -476,7 +476,7 @@ export function generateQuarryPDF({
         e.emptyWeight ?? "—",
         e.loadedWeight ?? "—",
         e.netWeight ?? "—",
-        e.remarks || "—",
+        e.materialId?.name || e.remarks || "—",
         (e.status || "—").toUpperCase(),
         fmtDateTime(e.entryTime),
       ]),
@@ -764,7 +764,7 @@ export function generateWeighbridgePDF({ entries = [], period, customDate }) {
     const materialSummary = {};
     filtered.forEach(e => {
       if (e.status === "completed") {
-        const mat = e.remarks ? e.remarks.trim() : "Other";
+        const mat = e.materialId?.name || (e.remarks ? e.remarks.trim() : "Other");
         if (!materialSummary[mat]) materialSummary[mat] = { trips: 0, weight: 0 };
         materialSummary[mat].trips += 1;
         materialSummary[mat].weight += Number(e.netWeight || 0);
@@ -782,9 +782,9 @@ export function generateWeighbridgePDF({ entries = [], period, customDate }) {
       { label: "Unique Vehicles", value: uniqueVehicles },
       ...materialCards
     ], y);
-    y = drawTable(doc, ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Remarks", "Status", "Entry Time"],
+    y = drawTable(doc, ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Material", "Status", "Entry Time"],
       filtered.map((e, i) => [i + 1, e.vehicleNumber || "—", e.driverName || "—", e.emptyWeight ?? "—",
-        e.loadedWeight ?? "—", e.netWeight ?? "—", e.remarks || "—",
+        e.loadedWeight ?? "—", e.netWeight ?? "—", e.materialId?.name || e.remarks || "—",
         (e.status || "—").toUpperCase(), fmtDateTime(e.entryTime)]), y);
   } else { y = drawNoData(doc, y, "No weighbridge entries for this period."); }
   finishModulePDF(doc, "Weighbridge", periodLabel, start);

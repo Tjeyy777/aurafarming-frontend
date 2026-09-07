@@ -41,6 +41,7 @@ import {
 } from "@mui/material";
 import { useMemo, useState } from "react";
 import { useWeighbridge } from "../hooks/useWighbridge";
+import { useMaterials } from "../hooks/useMaterials";
 import ExportDialog, { ExportButton } from "./ExportDialog";
 import { generateWeighbridgePDF } from "../utils/pdfGenerator";
 import { generateWeighbridgeExcel } from "../utils/excelGenerator";
@@ -48,8 +49,7 @@ import { fetchAllWeighbridgeEntries } from "../utils/exportDataFetcher";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const EMPTY_FORM = { vehicleNumber: "", driverName: "", emptyWeight: "", remarks: "" };
-const REMARKS_OPTIONS = ["baller", "quarry waste", "sea wall", "muck"];
+const EMPTY_FORM = { vehicleNumber: "", driverName: "", emptyWeight: "", materialId: "" };
 
 const TODAY_COLS = "50px 150px 140px 110px 110px 140px 150px 150px 110px 90px 120px";
 const HISTORY_COLS = "180px 120px 130px 100px 160px 140px";
@@ -200,6 +200,8 @@ export default function WeighbridgePage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
 
+  const { data: materials = [] } = useMaterials();
+
   const [tab, setTab] = useState(0);
   const [todayPage, setTodayPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
@@ -281,7 +283,7 @@ export default function WeighbridgePage() {
       vehicleNumber: newRow.vehicleNumber.trim().toUpperCase(),
       driverName: newRow.driverName?.trim() || "",
       emptyWeight: Number(newRow.emptyWeight),
-      remarks: newRow.remarks,
+      materialId: newRow.materialId || undefined,
     });
     if (res?.status === "success") { setNewRow(EMPTY_FORM); setPrevWeightHint(""); }
     else setNewRowError(res?.message || "Failed to add entry.");
@@ -294,7 +296,7 @@ export default function WeighbridgePage() {
       driverName: row.driverName || "",
       emptyWeight: row.emptyWeight ?? "",
       loadedWeight: row.loadedWeight ?? "",
-      remarks: row.remarks || "",
+      materialId: row.materialId?._id || "",
       entryTime: row.entryTime ? toLocalISOString(row.entryTime) : "",
       exitTime: row.exitTime ? toLocalISOString(row.exitTime) : "",
     });
@@ -310,7 +312,7 @@ export default function WeighbridgePage() {
         driverName: editForm.driverName?.trim() || "", 
         emptyWeight: editForm.emptyWeight === "" ? undefined : Number(editForm.emptyWeight),
         loadedWeight: editForm.loadedWeight === "" ? null : Number(editForm.loadedWeight),
-        remarks: editForm.remarks,
+        materialId: editForm.materialId || null,
         entryTime: editForm.entryTime ? new Date(editForm.entryTime).toISOString() : undefined,
         exitTime: editForm.exitTime ? new Date(editForm.exitTime).toISOString() : null,
       },
@@ -379,7 +381,7 @@ export default function WeighbridgePage() {
         (todayEntries || []).forEach(e => {
           if (e.vehicleNumber) uniqueVehiclesToday.add(e.vehicleNumber);
           if (e.status === 'completed') {
-            const mat = e.remarks ? e.remarks.trim() : 'Other';
+            const mat = e.materialId?.name || 'Other';
             if (!materialBreakdown[mat]) materialBreakdown[mat] = { trips: 0, weight: 0 };
             materialBreakdown[mat].trips += 1;
             materialBreakdown[mat].weight += Number(e.netWeight || 0);
@@ -446,16 +448,16 @@ export default function WeighbridgePage() {
                       <Box />
                       <TextField
                         select
-                        label="Remarks"
+                        label="Material"
                         size="small"
-                        value={newRow.remarks}
-                        onChange={(e) => handleNewRowChange("remarks", e.target.value)}
+                        value={newRow.materialId}
+                        onChange={(e) => handleNewRowChange("materialId", e.target.value)}
                         SelectProps={{ native: true }}
                       >
                         <option value=""></option>
-                        {REMARKS_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
+                        {materials.map((m) => (
+                          <option key={m._id} value={m._id}>
+                            {m.name}{m.ratePerTon ? ` (₹${m.ratePerTon}/T)` : ""}
                           </option>
                         ))}
                       </TextField>
@@ -463,7 +465,7 @@ export default function WeighbridgePage() {
                       <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddRow} sx={{ fontWeight: 700, borderRadius: "10px", height: 40, alignSelf: "center" }}>Add</Button>
                     </Box>
 
-                    <ColHeader cols={TODAY_COLS} headers={["Vehicle", "Driver", "Empty", "Loaded", "Remarks", "Entry Time", "Exit Time", "Net Weight", "Status", "Actions"]} showCheckbox isAllSelected={selectedIds.length > 0 && selectedIds.length === filteredTodayEntries.length} isIndeterminate={selectedIds.length > 0 && selectedIds.length < filteredTodayEntries.length} onSelectAll={handleSelectAll} />
+                    <ColHeader cols={TODAY_COLS} headers={["Vehicle", "Driver", "Empty", "Loaded", "Material", "Entry Time", "Exit Time", "Net Weight", "Status", "Actions"]} showCheckbox isAllSelected={selectedIds.length > 0 && selectedIds.length === filteredTodayEntries.length} isIndeterminate={selectedIds.length > 0 && selectedIds.length < filteredTodayEntries.length} onSelectAll={handleSelectAll} />
 
                     {todayLoading ? (
                       <Box sx={{ py: 8, textAlign: "center" }}><CircularProgress /></Box>
@@ -484,14 +486,14 @@ export default function WeighbridgePage() {
                                   <TextField
                                     select
                                     size="small"
-                                    value={editForm.remarks}
-                                    onChange={(e) => setEditForm((p) => ({ ...p, remarks: e.target.value }))}
+                                    value={editForm.materialId}
+                                    onChange={(e) => setEditForm((p) => ({ ...p, materialId: e.target.value }))}
                                     SelectProps={{ native: true }}
                                   >
                                     <option value=""></option>
-                                    {REMARKS_OPTIONS.map((opt) => (
-                                      <option key={opt} value={opt}>
-                                        {opt}
+                                    {materials.map((m) => (
+                                      <option key={m._id} value={m._id}>
+                                        {m.name}{m.ratePerTon ? ` (₹${m.ratePerTon}/T)` : ""}
                                       </option>
                                     ))}
                                   </TextField>
@@ -510,7 +512,7 @@ export default function WeighbridgePage() {
                                   <RowCell>{row.driverName || "—"}</RowCell>
                                   <RowCell>{fmtWeight(row.emptyWeight)}</RowCell>
                                   <RowCell>{fmtWeight(row.loadedWeight)}</RowCell>
-                                  <RowCell>{row.remarks || "—"}</RowCell>
+                                  <RowCell>{row.materialId?.name || row.remarks || "—"}</RowCell>
                                   <RowCell sx={{ fontSize: "0.78rem" }}>{fmtDateTime(row.entryTime)}</RowCell>
                                   <RowCell sx={{ fontSize: "0.78rem" }}>{fmtDateTime(row.exitTime)}</RowCell>
                                   <RowCell sx={{ fontWeight: 900, color: "primary.main" }}>{fmtWeight(row.netWeight)}</RowCell>

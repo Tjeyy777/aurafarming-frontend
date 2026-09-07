@@ -10,7 +10,7 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import ScaleIcon from "@mui/icons-material/Scale";
 import { fetchAllWeighbridgeEntries, fetchAllRentedLogs } from '../utils/exportDataFetcher';
-import { useWorkTypes } from '../hooks/useWorkTypes';
+import { useMaterials } from '../hooks/useMaterials';
 
 const fmtCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val || 0);
 
@@ -73,7 +73,7 @@ export default function ProfitDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: workTypes = [], isLoading: loadingWT } = useWorkTypes();
+  const { isLoading: loadingMat } = useMaterials();
 
   const analytics = useMemo(() => {
     if (!weighbridgeData || !rentedLogsData) return null;
@@ -86,9 +86,9 @@ export default function ProfitDashboard() {
     let totalRevenue = 0;
     let totalCost = 0;
     const materialRevenue = {};
-    const workTypeCost = {};
+    const materialCost = {};
 
-    // Filter and aggregate weighbridge (Revenue)
+    // Filter and aggregate weighbridge (Revenue = net tons × material rate)
     weighbridgeData.forEach((entry) => {
       if (entry.status !== 'completed') return;
       const entryDate = new Date(entry.entryTime || entry.exitTime || entry.createdAt);
@@ -96,8 +96,8 @@ export default function ProfitDashboard() {
         if (entry.netWeight && entry.materialRate) {
           const rev = (entry.netWeight / 1000) * entry.materialRate;
           totalRevenue += rev;
-          
-          const mat = entry.remarks || 'Unknown';
+
+          const mat = entry.materialId?.name || 'Unspecified';
           if (!materialRevenue[mat]) materialRevenue[mat] = { revenue: 0, trips: 0, weight: 0 };
           materialRevenue[mat].revenue += rev;
           materialRevenue[mat].trips += 1;
@@ -106,23 +106,20 @@ export default function ProfitDashboard() {
       }
     });
 
-    // Filter and aggregate rented logs (Cost)
+    // Filter and aggregate rented logs (Cost = backend-computed hours × hourly rate)
     rentedLogsData.forEach((log) => {
+      if (log.isTrip) return; // trips carry no cost
       const logDate = new Date(log.date);
       if (logDate >= start && logDate <= end) {
-        if (log.openingMeter != null && log.closingMeter != null) {
-          const hours = log.closingMeter - log.openingMeter;
-          if (hours > 0) {
-            // Need hourly rate. It comes from the vehicle's cost rate.
-            const hourlyRate = log.vehicleId?.ratePerHour || 0;
-            const cost = hours * hourlyRate;
-            totalCost += cost;
+        const cost = log.cost || 0;
+        const hours = log.totalHours || 0;
+        if (cost > 0 || hours > 0) {
+          totalCost += cost;
 
-            const wt = log.workTypeId?.name || 'Unknown';
-            if (!workTypeCost[wt]) workTypeCost[wt] = { cost: 0, hours: 0 };
-            workTypeCost[wt].cost += cost;
-            workTypeCost[wt].hours += hours;
-          }
+          const mat = log.materialId?.name || 'Unspecified';
+          if (!materialCost[mat]) materialCost[mat] = { cost: 0, hours: 0 };
+          materialCost[mat].cost += cost;
+          materialCost[mat].hours += hours;
         }
       }
     });
@@ -132,11 +129,11 @@ export default function ProfitDashboard() {
       totalCost,
       profit: totalRevenue - totalCost,
       materialRevenue,
-      workTypeCost,
+      materialCost,
     };
   }, [weighbridgeData, rentedLogsData, startDate, endDate]);
 
-  const isLoading = loadingWb || loadingRented || loadingWT;
+  const isLoading = loadingWb || loadingRented || loadingMat;
 
   if (isLoading) {
     return (
@@ -231,19 +228,19 @@ export default function ProfitDashboard() {
         <Grid item xs={12} md={6}>
           <Card sx={{ borderRadius: "16px", border: `1px solid ${theme.palette.divider}`, bgcolor: isDark ? "rgba(255,255,255,0.02)" : "#fff", height: '100%' }}>
             <Box sx={{ p: 2.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>Rented Cost by Work Type</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>Rented Cost by Material</Typography>
             </Box>
             <CardContent sx={{ p: 0 }}>
-              {Object.keys(analytics?.workTypeCost || {}).length === 0 ? (
+              {Object.keys(analytics?.materialCost || {}).length === 0 ? (
                 <Typography sx={{ p: 3, color: 'text.secondary', textAlign: 'center' }}>No cost data for this period.</Typography>
               ) : (
                 <Box>
                   <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', p: 2, bgcolor: isDark ? 'rgba(0,0,0,0.2)' : '#f8faff', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>Work Type</Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>Material</Typography>
                     <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', textAlign: 'right' }}>Hours</Typography>
                     <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', textAlign: 'right' }}>Cost</Typography>
                   </Box>
-                  {Object.entries(analytics.workTypeCost).sort((a, b) => b[1].cost - a[1].cost).map(([wt, data]) => (
+                  {Object.entries(analytics.materialCost).sort((a, b) => b[1].cost - a[1].cost).map(([wt, data]) => (
                     <Box key={wt} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
                       <Typography sx={{ fontWeight: 700 }}>{wt}</Typography>
                       <Typography sx={{ textAlign: 'right' }}>{data.hours.toFixed(1)} h</Typography>

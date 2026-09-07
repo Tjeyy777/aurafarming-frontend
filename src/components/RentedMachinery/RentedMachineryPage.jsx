@@ -29,9 +29,9 @@ import { generateRentedLogsPDF } from '../../utils/pdfGenerator';
 import { generateRentedLogsExcel } from '../../utils/excelGenerator';
 import { fetchAllRentedLogs } from '../../utils/exportDataFetcher';
 import PartyManagerDialog from './PartyManagerDialog';
-import WorkTypeManagerDialog from './WorkTypeManagerDialog';
+import MaterialManagerDialog from './MaterialManagerDialog';
 import { useParties } from '../../hooks/useParties';
-import { useWorkTypes } from '../../hooks/useWorkTypes';
+import { useMaterials } from '../../hooks/useMaterials';
 import BusinessIcon from '@mui/icons-material/Business';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import ExportDialog, { ExportButton } from '../ExportDialog';
@@ -168,7 +168,7 @@ export default function RentedMachineryPage() {
   const [editForm, setEditForm] = useState({});
   const [exportOpen, setExportOpen] = useState(false);
   const [partyManagerOpen, setPartyManagerOpen] = useState(false);
-  const [workTypeManagerOpen, setWorkTypeManagerOpen] = useState(false);
+  const [materialManagerOpen, setMaterialManagerOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
 
@@ -179,13 +179,13 @@ export default function RentedMachineryPage() {
     openingMeter: '',
     closingMeter: '',
     driverName: '',
-    workTypeId: '',
+    materialId: '',
     remarks: '',
   });
 
   // Queries
   const { data: parties = [] } = useParties();
-  const { data: workTypes = [] } = useWorkTypes();
+  const { data: materials = [] } = useMaterials();
   const { data: vehicles = [] } = useRentedVehicles({ status: 'active' });
   const { data: logs = [], isLoading, refetch } = useRentedLogs({
     vehicleId: vehicleFilter !== 'All' ? vehicleFilter : undefined,
@@ -249,7 +249,7 @@ export default function RentedMachineryPage() {
       closingMeter: newRow.closingMeter ? Number(newRow.closingMeter) : null,
       driverName: newRow.driverName,
       companyId: newRow.companyId || undefined,
-      workTypeId: newRow.workTypeId || undefined,
+      materialId: newRow.materialId || undefined,
       remarks: newRow.remarks,
     });
 
@@ -262,7 +262,7 @@ export default function RentedMachineryPage() {
         openingMeter: '',
         closingMeter: '',
         driverName: '',
-        workTypeId: '',
+        materialId: '',
         remarks: '',
       });
     }
@@ -275,7 +275,7 @@ export default function RentedMachineryPage() {
       closingMeter: log.closingMeter ?? '',
       driverName: log.driverName || '',
       companyId: log.companyId?._id || '',
-      workTypeId: log.workTypeId?._id || '',
+      materialId: log.materialId?._id || '',
       remarks: log.remarks || '',
       tripPurpose: log.tripPurpose || '',
       date: log.date ? new Date(log.date).toISOString().split('T')[0] : '',
@@ -295,7 +295,7 @@ export default function RentedMachineryPage() {
         closingMeter: editForm.closingMeter !== '' ? Number(editForm.closingMeter) : null,
         driverName: editForm.driverName,
         companyId: editForm.companyId || undefined,
-        workTypeId: editForm.workTypeId || undefined,
+        materialId: editForm.materialId || undefined,
         remarks: editForm.remarks,
         tripPurpose: editForm.tripPurpose,
         date: editForm.date,
@@ -387,8 +387,8 @@ export default function RentedMachineryPage() {
           <Button variant="outlined" startIcon={<BusinessIcon />} onClick={() => setPartyManagerOpen(true)} sx={{ borderRadius: 2, fontWeight: 700 }}>
             Companies
           </Button>
-          <Button variant="outlined" startIcon={<ConstructionIcon />} onClick={() => setWorkTypeManagerOpen(true)} sx={{ borderRadius: 2, fontWeight: 700 }}>
-            Type of Work
+          <Button variant="outlined" startIcon={<ConstructionIcon />} onClick={() => setMaterialManagerOpen(true)} sx={{ borderRadius: 2, fontWeight: 700 }}>
+            Manage Materials
           </Button>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={refetch} sx={{ borderRadius: 2, fontWeight: 700 }}>
             Refresh
@@ -514,14 +514,14 @@ export default function RentedMachineryPage() {
               <TextField
                 select
                 size="small"
-                value={newRow.workTypeId}
-                onChange={(e) => setNewRow(p => ({ ...p, workTypeId: e.target.value }))}
-                placeholder="Work Type"
+                value={newRow.materialId}
+                onChange={(e) => setNewRow(p => ({ ...p, materialId: e.target.value }))}
+                placeholder="Material"
               >
                 <MenuItem value="">None</MenuItem>
-                {workTypes.map(wt => (
+                {materials.map(wt => (
                   <MenuItem key={wt._id} value={wt._id}>
-                    {wt.name}
+                    {wt.name}{wt.ratePerTon ? ` — ₹${wt.ratePerTon}/T` : ''}
                   </MenuItem>
                 ))}
               </TextField>
@@ -570,7 +570,7 @@ export default function RentedMachineryPage() {
             </Box>
 
             <ColHeader
-              headers={['', 'Vehicle', 'Company', 'Work Type', 'Date', 'Opening', 'Closing', 'Driver', 'Hours', 'Cost', 'Remarks', 'Actions']}
+              headers={['', 'Vehicle', 'Company', 'Material', 'Date', 'Opening', 'Closing', 'Driver', 'Hours', 'Cost', 'Remarks', 'Actions']}
               showCheckbox
               isAllSelected={selectedIds.length > 0 && selectedIds.length === filteredLogs.length}
               isIndeterminate={selectedIds.length > 0 && selectedIds.length < filteredLogs.length}
@@ -629,13 +629,13 @@ export default function RentedMachineryPage() {
                             <TextField
                               select
                               size="small"
-                              value={editForm.workTypeId}
-                              onChange={(e) => setEditForm(p => ({ ...p, workTypeId: e.target.value }))}
+                              value={editForm.materialId}
+                              onChange={(e) => setEditForm(p => ({ ...p, materialId: e.target.value }))}
                             >
                               <MenuItem value="">None</MenuItem>
-                              {workTypes.map(wt => (
+                              {materials.map(wt => (
                                 <MenuItem key={wt._id} value={wt._id}>
-                                  {wt.name}
+                                  {wt.name}{wt.ratePerTon ? ` — ₹${wt.ratePerTon}/T` : ''}
                                 </MenuItem>
                               ))}
                             </TextField>
@@ -678,7 +678,7 @@ export default function RentedMachineryPage() {
                           <>
                             <RowCell sx={{ fontWeight: 800 }}>{log.vehicleId?.vehicleNumber}</RowCell>
                             <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>{log.companyId?.name || '—'}</RowCell>
-                            <RowCell sx={{ color: 'info.main' }}>{log.workTypeId?.name || '—'}</RowCell>
+                            <RowCell sx={{ color: 'info.main' }}>{log.materialId?.name || '—'}</RowCell>
                             <RowCell>{fmtDate(log.date)}</RowCell>
                             <RowCell>{fmtNumber(log.openingMeter)}</RowCell>
                             <RowCell>{fmtNumber(log.closingMeter)}</RowCell>
@@ -741,13 +741,13 @@ export default function RentedMachineryPage() {
                                     <TextField
                                       select
                                       size="small"
-                                      value={editForm.workTypeId}
-                                      onChange={(e) => setEditForm(p => ({ ...p, workTypeId: e.target.value }))}
+                                      value={editForm.materialId}
+                                      onChange={(e) => setEditForm(p => ({ ...p, materialId: e.target.value }))}
                                     >
                                       <MenuItem value="">None</MenuItem>
-                                      {workTypes.map(wt => (
+                                      {materials.map(wt => (
                                         <MenuItem key={wt._id} value={wt._id}>
-                                          {wt.name}
+                                          {wt.name}{wt.ratePerTon ? ` — ₹${wt.ratePerTon}/T` : ''}
                                         </MenuItem>
                                       ))}
                                     </TextField>
@@ -791,7 +791,7 @@ export default function RentedMachineryPage() {
                                   <>
                                     <RowCell>{log.vehicleId?.vehicleNumber}</RowCell>
                                     <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>{child.companyId?.name || '—'}</RowCell>
-                                    <RowCell sx={{ color: 'info.main' }}>{child.workTypeId?.name || '—'}</RowCell>
+                                    <RowCell sx={{ color: 'info.main' }}>{child.materialId?.name || '—'}</RowCell>
                                     <RowCell>{fmtDate(child.date)}</RowCell>
                                     <RowCell>{fmtNumber(child.openingMeter)}</RowCell>
                                     <RowCell>{fmtNumber(child.closingMeter)}</RowCell>
@@ -853,9 +853,9 @@ export default function RentedMachineryPage() {
         onClose={() => setPartyManagerOpen(false)}
       />
 
-      <WorkTypeManagerDialog
-        open={workTypeManagerOpen}
-        onClose={() => setWorkTypeManagerOpen(false)}
+      <MaterialManagerDialog
+        open={materialManagerOpen}
+        onClose={() => setMaterialManagerOpen(false)}
       />
 
       <ExportDialog

@@ -100,8 +100,8 @@ export function generateWeighbridgeExcel({ entries = [], period, customDate }) {
   addSheet(wb, "Weighbridge Entries", filtered.map((e, i) => [
     i + 1, e.vehicleNumber || "—", e.driverName || "—",
     e.emptyWeight ?? "—", e.loadedWeight ?? "—", e.netWeight ?? "—",
-    e.remarks || "—", (e.status || "—").toUpperCase(), fmtDateTime(e.entryTime), fmtDateTime(e.exitTime),
-  ]), ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Remarks", "Status", "Entry Time", "Exit Time"]);
+    e.materialId?.name || e.remarks || "—", (e.status || "—").toUpperCase(), fmtDateTime(e.entryTime), fmtDateTime(e.exitTime),
+  ]), ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Material", "Status", "Entry Time", "Exit Time"]);
 
   saveWorkbook(wb, `Weighbridge_Report_${fmtDate(start)}.xlsx`);
 }
@@ -288,8 +288,8 @@ export function generateFullExcel({
   if (filteredWB.length > 0) {
     addSheet(wb, "Weighbridge", filteredWB.map((e, i) => [
       i + 1, e.vehicleNumber || "—", e.emptyWeight ?? "—", e.loadedWeight ?? "—",
-      e.netWeight ?? "—", e.remarks || "—", (e.status || "—").toUpperCase(), fmtDateTime(e.entryTime),
-    ]), ["#", "Vehicle", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Remarks", "Status", "Entry Time"]);
+      e.netWeight ?? "—", e.materialId?.name || e.remarks || "—", (e.status || "—").toUpperCase(), fmtDateTime(e.entryTime),
+    ]), ["#", "Vehicle", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Material", "Status", "Entry Time"]);
   }
 
   // Explosives
