@@ -18,12 +18,14 @@ export default function WorkTypeManagerDialog({ open, onClose }) {
   const deleteWorkType = useDeleteWorkType();
 
   const [name, setName] = useState('');
+  const [ratePerTon, setRatePerTon] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    await createWorkType.mutateAsync({ name: name.trim() });
+    await createWorkType.mutateAsync({ name: name.trim(), ratePerTon: Number(ratePerTon) || 0 });
     setName('');
+    setRatePerTon('');
   };
 
   return (
@@ -32,7 +34,7 @@ export default function WorkTypeManagerDialog({ open, onClose }) {
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <ConstructionIcon color="primary" />
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>Manage Work Types</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>Manage Materials / Work Types</Typography>
           </Stack>
           <IconButton onClick={onClose} size="small">
             <CloseIcon />
@@ -47,10 +49,19 @@ export default function WorkTypeManagerDialog({ open, onClose }) {
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Type of Work Name"
+                placeholder="Name (e.g. Seawall)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                sx={{ bgcolor: 'background.paper' }}
+                sx={{ bgcolor: 'background.paper', flex: 2 }}
+              />
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                placeholder="Rate/Ton (₹)"
+                value={ratePerTon}
+                onChange={(e) => setRatePerTon(e.target.value)}
+                sx={{ bgcolor: 'background.paper', flex: 1 }}
               />
               <Button
                 variant="contained"
@@ -97,6 +108,7 @@ export default function WorkTypeManagerDialog({ open, onClose }) {
                 >
                   <ListItemText 
                     primary={wt.name} 
+                    secondary={wt.ratePerTon ? `₹${wt.ratePerTon} per ton` : 'No rate set'}
                     primaryTypographyProps={{ fontWeight: 600 }}
                   />
                 </ListItem>
