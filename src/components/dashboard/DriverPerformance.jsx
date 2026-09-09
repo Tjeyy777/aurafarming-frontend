@@ -2,13 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { Box, Grid, MenuItem, TextField, Typography, Stack, useTheme } from '@mui/material';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  PieChart, Pie, Cell, AreaChart, Area, Legend, LabelList,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import PageHeader from '../common/PageHeader';
-import { StatCard, ChartCard, ChartTooltip, EmptyState, MiniTable } from './DashboardKit';
+import { StatCard, ChartCard, ChartTooltip, EmptyState, HBarChart, MiniTable } from './DashboardKit';
 import {
-  CHART_COLORS, calcEntryCost, filterLogsByRange, buildTrend,
+  CHART_COLORS, calcEntryCost, filterLogsByRange, buildTrend, topNplusOther,
   normalizeDriver, driverKey, fmtCurrency, fmtNumber, fmtHours,
 } from './dashboardUtils';
 
@@ -104,8 +103,13 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
     [driverLogs, startDate, endDate],
   );
 
-  const topByHours = useMemo(() => drivers.slice(0, 10), [drivers]);
-  const labelFill = theme.palette.text.secondary;
+  const topByHours = useMemo(
+    () => topNplusOther(drivers.map((d) => ({ name: d.name, hours: d.hours })), 'hours', 12),
+    [drivers],
+  );
+  const vehicleChartData = useMemo(() => topNplusOther(byVehicle, 'hours', 10), [byVehicle]);
+  const companyChartData = useMemo(() => topNplusOther(byCompany, 'value', 8), [byCompany]);
+  const materialChartData = useMemo(() => topNplusOther(byMaterial, 'value', 8), [byMaterial]);
 
   return (
     <Box>
@@ -137,23 +141,17 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
         </Typography>
       ) : (
         <Stack spacing={3}>
-          <Grid container spacing={3}>
+          <Grid container spacing={3} alignItems="flex-start">
             <Grid item xs={12} lg={6}>
-              <ChartCard title="Top Drivers by Hours" height={Math.max(360, topByHours.length * 52 + 40)}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topByHours} layout="vertical" margin={{ left: 20, right: 64, top: 4, bottom: 4 }} barCategoryGap="28%">
-                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
-                    <XAxis type="number" tick={{ fill: axis, fontSize: 12 }} />
-                    <YAxis type="category" dataKey="name" width={130} tick={{ fill: axis, fontSize: 12 }} />
-                    <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                    <Bar dataKey="hours" name="Hours" radius={[0, 6, 6, 0]} maxBarSize={34}>
-                      {topByHours.map((e, i) => (
-                        <Cell key={e.key} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                      <LabelList dataKey="hours" position="right" formatter={(v) => fmtHours(v)} style={{ fill: labelFill, fontSize: 12, fontWeight: 700 }} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <ChartCard title="Top drivers by hours">
+                <HBarChart
+                  data={topByHours}
+                  labelKey="name"
+                  valueKey="hours"
+                  valueFormatter={fmtHours}
+                  colorByIndex
+                  labelWidth={130}
+                />
               </ChartCard>
             </Grid>
             <Grid item xs={12} lg={6}>
@@ -200,72 +198,71 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
                 </Grid>
               </Grid>
 
-              <Grid container spacing={3}>
-                <Grid item xs={12} lg={7}>
-                  <ChartCard title="Hours by Vehicle" height={440}>
-                    {byVehicle.length === 0 ? <EmptyState /> : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={byVehicle.slice(0, 12)} margin={{ left: 8, right: 16, top: 8, bottom: 8 }} barCategoryGap="22%">
-                          <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                          <XAxis dataKey="name" tick={{ fill: axis, fontSize: 11 }} interval={0} angle={-35} textAnchor="end" height={78} />
-                          <YAxis tick={{ fill: axis, fontSize: 12 }} width={48} />
-                          <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                          <Bar dataKey="hours" name="Hours" fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} maxBarSize={52} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
+              <Grid container spacing={3} alignItems="flex-start">
+                <Grid item xs={12} lg={6}>
+                  <ChartCard title="Hours by vehicle" subtitle={byVehicle.length ? `Top ${Math.min(10, byVehicle.length)} of ${byVehicle.length}` : undefined}>
+                    {vehicleChartData.length === 0
+                      ? <EmptyState dense />
+                      : (
+                        <HBarChart
+                          data={vehicleChartData}
+                          labelKey="name"
+                          valueKey="hours"
+                          valueFormatter={fmtHours}
+                          color={CHART_COLORS[1]}
+                          labelWidth={120}
+                        />
+                      )}
                   </ChartCard>
                 </Grid>
-                <Grid item xs={12} lg={5}>
-                  <ChartCard title="Hours by Company" height={440}>
-                    {byCompany.length === 0 ? <EmptyState /> : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={byCompany} dataKey="value" nameKey="name" cx="50%" cy="46%" outerRadius={120} innerRadius={70} paddingAngle={2}>
-                            {byCompany.map((e, i) => (
-                              <Cell key={e.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} />
-                          <Legend wrapperStyle={{ fontSize: 12 }} verticalAlign="bottom" height={36} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    )}
+                <Grid item xs={12} lg={6}>
+                  <ChartCard title="Hours by company">
+                    {companyChartData.length === 0
+                      ? <EmptyState dense />
+                      : (
+                        <HBarChart
+                          data={companyChartData}
+                          labelKey="name"
+                          valueKey="value"
+                          valueFormatter={fmtHours}
+                          colorByIndex
+                          labelWidth={130}
+                        />
+                      )}
                   </ChartCard>
                 </Grid>
-                <Grid item xs={12}>
-                  <ChartCard title={`Activity Trend — ${selectedDriver.name}`} height={400}>
-                    {trend.length === 0 ? <EmptyState /> : (
+                <Grid item xs={12} lg={materialChartData.length > 0 ? 6 : 12}>
+                  <ChartCard title={`Activity trend — ${selectedDriver.name}`} height={320}>
+                    {trend.length === 0 ? <EmptyState dense /> : (
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={trend} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
                           <defs>
                             <linearGradient id="dpHoursFill" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={CHART_COLORS[1]} stopOpacity={0.32} />
+                              <stop offset="5%" stopColor={CHART_COLORS[1]} stopOpacity={0.28} />
                               <stop offset="95%" stopColor={CHART_COLORS[1]} stopOpacity={0} />
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                          <XAxis dataKey="label" tick={{ fill: axis, fontSize: 12 }} minTickGap={16} />
+                          <XAxis dataKey="label" tick={{ fill: axis, fontSize: 12 }} minTickGap={24} />
                           <YAxis tick={{ fill: axis, fontSize: 12 }} width={48} />
                           <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} />
-                          <Area type="monotone" dataKey="hours" name="Hours" stroke={CHART_COLORS[1]} fill="url(#dpHoursFill)" strokeWidth={2.5} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
+                          <Area type="monotone" dataKey="hours" name="Hours" stroke={CHART_COLORS[1]} fill="url(#dpHoursFill)" strokeWidth={2} dot={trend.length > 24 ? false : { r: 2 }} activeDot={{ r: 4 }} />
                         </AreaChart>
                       </ResponsiveContainer>
                     )}
                   </ChartCard>
                 </Grid>
-                {byMaterial.length > 0 && (
-                  <Grid item xs={12}>
-                    <ChartCard title="Hours by Material" height={400}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={byMaterial} margin={{ left: 8, right: 16, top: 8, bottom: 8 }} barCategoryGap="24%">
-                          <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                          <XAxis dataKey="name" tick={{ fill: axis, fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={70} />
-                          <YAxis tick={{ fill: axis, fontSize: 12 }} width={48} />
-                          <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                          <Bar dataKey="value" name="Hours" fill={CHART_COLORS[3]} radius={[6, 6, 0, 0]} maxBarSize={64} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                {materialChartData.length > 0 && (
+                  <Grid item xs={12} lg={6}>
+                    <ChartCard title="Hours by material">
+                      <HBarChart
+                        data={materialChartData}
+                        labelKey="name"
+                        valueKey="value"
+                        valueFormatter={fmtHours}
+                        color={CHART_COLORS[3]}
+                        labelWidth={130}
+                      />
                     </ChartCard>
                   </Grid>
                 )}

@@ -2,13 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { Box, Grid, MenuItem, TextField, Typography, Stack, useTheme } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  PieChart, Pie, Cell, AreaChart, Area, Legend, LabelList,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import PageHeader from '../common/PageHeader';
-import { StatCard, ChartCard, ChartTooltip, EmptyState, MiniTable } from './DashboardKit';
+import { StatCard, ChartCard, ChartTooltip, EmptyState, HBarChart, MiniTable } from './DashboardKit';
 import {
-  CHART_COLORS, calcEntryCost, filterLogsByRange, buildTrend,
+  CHART_COLORS, calcEntryCost, filterLogsByRange, buildTrend, topNplusOther,
   fmtCurrency, fmtCompactCurrency, fmtNumber, fmtHours,
 } from './dashboardUtils';
 
@@ -117,8 +116,12 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
       ? 'Unassigned'
       : parties.find((p) => p._id === selected)?.name || 'Company';
 
-  const currencyTip = (v) => fmtCurrency(v);
-  const labelFill = theme.palette.text.secondary;
+  const vehicleChartData = useMemo(
+    () => topNplusOther(byVehicle.map((v) => ({ name: v.vehicle, cost: v.cost })), 'cost', 10),
+    [byVehicle],
+  );
+  const materialChartData = useMemo(() => topNplusOther(byMaterial, 'value', 8), [byMaterial]);
+  const companyChartData = useMemo(() => topNplusOther(perCompany, 'cost', 12), [perCompany]);
 
   return (
     <Box>
@@ -176,78 +179,76 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
             </Grid>
           </Grid>
 
-          <Grid container spacing={3}>
+          <Grid container spacing={3} alignItems="flex-start">
             {selected === ALL && (
-              <Grid item xs={12}>
-                <ChartCard title="Cost by Company" height={Math.max(360, perCompany.length * 52 + 40)}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={perCompany} layout="vertical" margin={{ left: 20, right: 72, top: 4, bottom: 4 }} barCategoryGap="28%">
-                      <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
-                      <XAxis type="number" tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} />
-                      <YAxis type="category" dataKey="name" width={150} tick={{ fill: axis, fontSize: 12 }} />
-                      <Tooltip content={<ChartTooltip valueFormatter={currencyTip} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                      <Bar dataKey="cost" name="Cost" radius={[0, 6, 6, 0]} maxBarSize={34}>
-                        {perCompany.map((e, i) => (
-                          <Cell key={e.id} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                        ))}
-                        <LabelList dataKey="cost" position="right" formatter={fmtCompactCurrency} style={{ fill: labelFill, fontSize: 12, fontWeight: 700 }} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+              <Grid item xs={12} lg={6}>
+                <ChartCard title="Cost by company">
+                  {companyChartData.length === 0
+                    ? <EmptyState dense />
+                    : (
+                      <HBarChart
+                        data={companyChartData}
+                        labelKey="name"
+                        valueKey="cost"
+                        valueFormatter={fmtCompactCurrency}
+                        colorByIndex
+                        labelWidth={150}
+                      />
+                    )}
                 </ChartCard>
               </Grid>
             )}
 
-            <Grid item xs={12} lg={7}>
-              <ChartCard title={selected === ALL ? 'Cost by Vehicle (all companies)' : 'Cost by Vehicle'} height={440}>
-                {byVehicle.length === 0 ? <EmptyState /> : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={byVehicle.slice(0, 14)} margin={{ left: 8, right: 16, top: 8, bottom: 8 }} barCategoryGap="22%">
-                      <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                      <XAxis dataKey="vehicle" tick={{ fill: axis, fontSize: 11 }} interval={0} angle={-35} textAnchor="end" height={78} />
-                      <YAxis tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} width={62} />
-                      <Tooltip content={<ChartTooltip valueFormatter={currencyTip} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                      <Bar dataKey="cost" name="Cost" fill={CHART_COLORS[0]} radius={[6, 6, 0, 0]} maxBarSize={52} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
+            <Grid item xs={12} lg={selected === ALL ? 6 : 12}>
+              <ChartCard title="Cost by vehicle" subtitle={vehicleChartData.length ? `Top ${Math.min(10, byVehicle.length)} of ${byVehicle.length}` : undefined}>
+                {vehicleChartData.length === 0
+                  ? <EmptyState dense />
+                  : (
+                    <HBarChart
+                      data={vehicleChartData}
+                      labelKey="name"
+                      valueKey="cost"
+                      valueFormatter={fmtCompactCurrency}
+                      color={CHART_COLORS[0]}
+                      labelWidth={130}
+                    />
+                  )}
               </ChartCard>
             </Grid>
 
-            <Grid item xs={12} lg={5}>
-              <ChartCard title="Cost by Material" height={440}>
-                {byMaterial.length === 0 ? <EmptyState /> : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={byMaterial} dataKey="value" nameKey="name" cx="50%" cy="46%" outerRadius={120} innerRadius={70} paddingAngle={2}>
-                        {byMaterial.map((e, i) => (
-                          <Cell key={e.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<ChartTooltip valueFormatter={currencyTip} />} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} verticalAlign="bottom" height={36} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
+            <Grid item xs={12} lg={6}>
+              <ChartCard title="Cost by material">
+                {materialChartData.length === 0
+                  ? <EmptyState dense />
+                  : (
+                    <HBarChart
+                      data={materialChartData}
+                      labelKey="name"
+                      valueKey="value"
+                      valueFormatter={fmtCompactCurrency}
+                      colorByIndex
+                      labelWidth={130}
+                    />
+                  )}
               </ChartCard>
             </Grid>
 
-            <Grid item xs={12}>
-              <ChartCard title={`Cost Trend — ${selectedName}`} height={400}>
-                {trend.length === 0 ? <EmptyState /> : (
+            <Grid item xs={12} lg={6}>
+              <ChartCard title={`Cost trend — ${selectedName}`} height={320}>
+                {trend.length === 0 ? <EmptyState dense /> : (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={trend} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
                       <defs>
                         <linearGradient id="cbCostFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={CHART_COLORS[0]} stopOpacity={0.32} />
+                          <stop offset="5%" stopColor={CHART_COLORS[0]} stopOpacity={0.28} />
                           <stop offset="95%" stopColor={CHART_COLORS[0]} stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                      <XAxis dataKey="label" tick={{ fill: axis, fontSize: 12 }} minTickGap={16} />
-                      <YAxis tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} width={62} />
+                      <XAxis dataKey="label" tick={{ fill: axis, fontSize: 12 }} minTickGap={24} />
+                      <YAxis tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} width={56} />
                       <Tooltip content={<ChartTooltip valueFormatter={(v, k) => (k === 'cost' ? fmtCurrency(v) : fmtHours(v))} />} />
-                      <Area type="monotone" dataKey="cost" name="Cost" stroke={CHART_COLORS[0]} fill="url(#cbCostFill)" strokeWidth={2.5} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
+                      <Area type="monotone" dataKey="cost" name="Cost" stroke={CHART_COLORS[0]} fill="url(#cbCostFill)" strokeWidth={2} dot={trend.length > 24 ? false : { r: 2 }} activeDot={{ r: 4 }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}

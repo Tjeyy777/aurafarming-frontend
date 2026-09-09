@@ -85,6 +85,21 @@ export const bucketLabelOf = (key, bucket) => {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 };
 
+// Keep the top `n` rows by `valueKey`; fold the rest into a single "Other" row
+// so a chart never has to render 20+ categories. `rows` must be pre-sorted desc.
+export const topNplusOther = (rows, valueKey, n = 8, labelKey = 'name') => {
+  if (!rows || rows.length <= n + 1) return rows || [];
+  const head = rows.slice(0, n);
+  const tail = rows.slice(n);
+  const other = { [labelKey]: `Other (${tail.length})`, __other: true };
+  tail.forEach((r) => {
+    Object.keys(r).forEach((k) => {
+      if (typeof r[k] === 'number') other[k] = (other[k] || 0) + r[k];
+    });
+  });
+  return [...head, other];
+};
+
 // Cost / hours / trips per time bucket, sorted chronologically.
 export const buildTrend = (logs, startDate, endDate) => {
   const bucket = pickBucket(startDate, endDate);
