@@ -15,7 +15,7 @@ const ALL = '__ALL__';
 const UNASSIGNED = '__UNASSIGNED__';
 const REVENUE = '#2A78D6';
 
-export default function CompanyBreakdown({ logs, parties = [], startDate, endDate }) {
+export default function CompanyBreakdown({ logs, parties = [], startDate, endDate, compact = false }) {
   const [selected, setSelected] = useState(ALL);
 
   const periodLogs = useMemo(
@@ -249,27 +249,31 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
               </ChartCard>
             </Grid>
 
-            <Grid item xs={12}>
-              <ChartCard title={`Cost trend — ${selectedName}`} height={300}>
-                {trend.length === 0
-                  ? <EmptyState dense />
-                  : (
-                    <TrendChart
-                      data={trend}
-                      valueFormatter={fmtCompactCurrency}
-                      series={[{ key: 'cost', name: 'Cost', color: REVENUE }]}
-                    />
-                  )}
-              </ChartCard>
-            </Grid>
+            {!compact && (
+              <Grid item xs={12}>
+                <ChartCard title={`Cost trend — ${selectedName}`} height={300}>
+                  {trend.length === 0
+                    ? <EmptyState dense />
+                    : (
+                      <TrendChart
+                        data={trend}
+                        valueFormatter={fmtCompactCurrency}
+                        series={[{ key: 'cost', name: 'Cost', color: REVENUE }]}
+                      />
+                    )}
+                </ChartCard>
+              </Grid>
+            )}
 
-            <Grid item xs={12}>
-              <ChartCard title="Vehicle utilisation" subtitle="Hours worked per vehicle, per week">
-                {heat.rows.length === 0 || heat.cols.length === 0
-                  ? <EmptyState dense />
-                  : <Heatmap rows={heat.rows} cols={heat.cols} getValue={heat.get} valueFormatter={fmtHours} />}
-              </ChartCard>
-            </Grid>
+            {!compact && (
+              <Grid item xs={12}>
+                <ChartCard title="Vehicle utilisation" subtitle="Hours worked per vehicle, per week">
+                  {heat.rows.length === 0 || heat.cols.length === 0
+                    ? <EmptyState dense />
+                    : <Heatmap rows={heat.rows} cols={heat.cols} getValue={heat.get} valueFormatter={fmtHours} />}
+                </ChartCard>
+              </Grid>
+            )}
           </Grid>
         </Stack>
       )}

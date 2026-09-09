@@ -14,7 +14,7 @@ import {
 
 const HOURS = '#EB6834';
 
-export default function DriverPerformance({ logs, startDate, endDate }) {
+export default function DriverPerformance({ logs, startDate, endDate, compact = false }) {
   const [selected, setSelected] = useState('');
 
   const periodLogs = useMemo(
@@ -180,13 +180,15 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
                   )}
               </ChartCard>
             </Grid>
-            <Grid item xs={12}>
-              <ChartCard title="Driver utilisation" subtitle="Hours worked per driver, per week">
-                {heat.rows.length === 0 || heat.cols.length === 0
-                  ? <EmptyState dense />
-                  : <Heatmap rows={heat.rows} cols={heat.cols} getValue={heat.get} valueFormatter={fmtHours} />}
-              </ChartCard>
-            </Grid>
+            {!compact && (
+              <Grid item xs={12}>
+                <ChartCard title="Driver utilisation" subtitle="Hours worked per driver, per week">
+                  {heat.rows.length === 0 || heat.cols.length === 0
+                    ? <EmptyState dense />
+                    : <Heatmap rows={heat.rows} cols={heat.cols} getValue={heat.get} valueFormatter={fmtHours} />}
+                </ChartCard>
+              </Grid>
+            )}
           </Grid>
 
           {selectedDriver && (
@@ -223,13 +225,15 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
                     {companyChartData.length === 0 ? <EmptyState dense /> : <HBarChart data={companyChartData} valueKey="value" valueFormatter={fmtHours} colorByIndex labelWidth={130} />}
                   </ChartCard>
                 </Grid>
-                <Grid item xs={12} lg={materialChartData.length > 0 ? 6 : 12}>
-                  <ChartCard title={`Activity trend — ${selectedDriver.name}`} height={300}>
-                    {trend.length === 0
-                      ? <EmptyState dense />
-                      : <TrendChart data={trend} valueFormatter={fmtHours} series={[{ key: 'hours', name: 'Hours', color: HOURS }]} />}
-                  </ChartCard>
-                </Grid>
+                {!compact && (
+                  <Grid item xs={12} lg={materialChartData.length > 0 ? 6 : 12}>
+                    <ChartCard title={`Activity trend — ${selectedDriver.name}`} height={300}>
+                      {trend.length === 0
+                        ? <EmptyState dense />
+                        : <TrendChart data={trend} valueFormatter={fmtHours} series={[{ key: 'hours', name: 'Hours', color: HOURS }]} />}
+                    </ChartCard>
+                  </Grid>
+                )}
                 {materialChartData.length > 0 && (
                   <Grid item xs={12} lg={6}>
                     <ChartCard title="Hours by material">

@@ -1041,3 +1041,133 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
   }
   finishModulePDF(doc, "RentedMachinery", periodLabel, start);
 }
+// ═════════════════════════════════════════════════════════════════════════════
+// ANALYTICS REPORT — executive P&L + company / driver / utilisation tables,
+// with the Revenue-vs-Cost chart embedded as an image (captured by the caller).
+// ═════════════════════════════════════════════════════════════════════════════
+export function generateAnalyticsPDF({
+  periodLabel: periodLbl = "Custom",
+  dateRangeStr = "",
+  summary,
+  companies = [],
+  drivers = [],
+  utilisation = null,      // { cols:[{label,weekKey}], rows:[{key,label}], get(row,col) }
+  chartImage = null,       // PNG data URL
+  companyName = null,
+}) {
+  const H = (v) => `${Number(v || 0).toFixed(1)} h`;
+  const PCT = (part, whole) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—");
+
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+
+  let y = drawHeader(
+    doc,
+    `Analytics${companyName ? ` — ${companyName}` : ""}`,
+    `${periodLbl}   ·   ${dateRangeStr}`,
+  );
+
+  // 1 — Executive summary
+  y = drawSectionTitle(doc, "Executive Summary", y);
+  y = drawSummaryCards(doc, [
+    { label: "Revenue", value: INR(summary.revenue) },
+    { label: "Cost", value: INR(summary.cost) },
+    { label: "Net Profit", value: INR(summary.profit) },
+    { label: "Margin", value: `${(summary.margin || 0).toFixed(1)}%` },
+    { label: "Cost / Tonne", value: INR(summary.costPerTonne) },
+    { label: "Tonnes Produced", value: Math.round(summary.tonnes || 0).toLocaleString("en-IN") },
+  ], y);
+
+  // 1b — Revenue vs Cost chart
+  if (chartImage) {
+    const imgW = pageW - 28;
+    const imgH = imgW * 0.4;
+    if (y + imgH > pageH - 20) { doc.addPage(); y = 16; }
+    try {
+      doc.addImage(chartImage, "PNG", 14, y, imgW, imgH);
+      y += imgH + 8;
+    } catch { /* image capture failed — carry on without it */ }
+  }
+
+  // 2 — Revenue by material
+  y = drawSectionTitle(doc, "Revenue by Material", y);
+  if (summary.materialRevenue?.length) {
+    y = drawTable(
+      doc,
+      ["Material", "Weight (t)", "Trips", "Revenue", "% of Revenue"],
+      summary.materialRevenue.map((m) => [
+        m.name, (m.weight / 1000).toFixed(2), m.trips, INR(m.revenue), PCT(m.revenue, summary.revenue),
+      ]),
+      y,
+    );
+  } else {
+    y = drawNoData(doc, y, "No revenue in this period.");
+  }
+
+  // 3 — Rented cost by material
+  y = drawSectionTitle(doc, "Rented Cost by Material", y);
+  if (summary.materialCost?.length) {
+    y = drawTable(
+      doc,
+      ["Material", "Hours", "Cost", "% of Cost"],
+      summary.materialCost.map((m) => [m.name, H(m.hours), INR(m.cost), PCT(m.cost, summary.cost)]),
+      y,
+    );
+  } else {
+    y = drawNoData(doc, y, "No rented cost in this period.");
+  }
+
+  // 4 — Company breakdown
+  y = drawSectionTitle(doc, "Company Breakdown", y);
+  if (companies.length) {
+    y = drawTable(
+      doc,
+      ["Company", "Cost", "Work Hrs", "Trip Hrs", "Trips", "Vehicles", "% Share"],
+      companies.map((c) => [
+        c.name, INR(c.cost), H(c.workHours), H(c.tripHours), c.trips, c.vehicles, `${(c.share || 0).toFixed(1)}%`,
+      ]),
+      y,
+    );
+  } else {
+    y = drawNoData(doc, y, "No company activity in this period.");
+  }
+
+  // 5 — Driver performance
+  y = drawSectionTitle(doc, "Driver Performance", y);
+  if (drivers.length) {
+    y = drawTable(
+      doc,
+      ["Driver", "Total Hrs", "Work", "Trip", "Days", "Vehicles", "Cost Generated"],
+      drivers.map((d) => [
+        d.name, H(d.hours), H(d.workHours), H(d.tripHours), d.daysCount, d.vehiclesCount, INR(d.cost),
+      ]),
+      y,
+    );
+  } else {
+    y = drawNoData(doc, y, "No driver activity in this period.");
+  }
+
+  // 6 — Vehicle utilisation (last 10 weeks max)
+  if (utilisation?.rows?.length && utilisation.cols?.length) {
+    const cols = utilisation.cols.slice(-10);
+    y = drawSectionTitle(doc, "Vehicle Utilisation — Hours per Week", y);
+    y = drawTable(
+      doc,
+      ["Vehicle", ...cols.map((c) => c.label)],
+      utilisation.rows.map((r) => [
+        r.label,
+        ...cols.map((c) => {
+          const v = utilisation.get(r, c);
+          return v > 0 ? Number(v).toFixed(1) : "—";
+        }),
+      ]),
+      y,
+      { fontSize: 6.5, columnStyles: { 0: { cellWidth: 26 } } },
+    );
+  }
+
+  drawFooters(doc);
+  const safe = dateRangeStr.replace(/[^\w]+/g, "_") || "report";
+  doc.save(`Analytics_Report_${safe}.pdf`);
+}
