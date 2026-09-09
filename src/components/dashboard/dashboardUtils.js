@@ -116,3 +116,72 @@ export const buildTrend = (logs, startDate, endDate) => {
     .sort((a, b) => a.key.localeCompare(b.key))
     .map((r) => ({ ...r, label: bucketLabelOf(r.key, bucket) }));
 };
+
+// Revenue (weighbridge) vs cost (rented) per time bucket, on one ₹ axis.
+export const buildRevenueCostTrend = (weighbridge, rentedLogs, startDate, endDate) => {
+  const bucket = pickBucket(startDate, endDate);
+  const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+  const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+  const map = new Map();
+  const touch = (key) => {
+    if (!map.has(key)) map.set(key, { key, revenue: 0, cost: 0 });
+    return map.get(key);
+  };
+
+  (weighbridge || []).forEach((e) => {
+    if (e.status !== 'completed' || !e.netWeight || !e.materialRate) return;
+    const d = new Date(e.entryTime || e.exitTime || e.createdAt);
+    if (d < start || d > end) return;
+    touch(bucketKeyOf(d, bucket)).revenue += (e.netWeight / 1000) * e.materialRate;
+  });
+  (rentedLogs || []).forEach((l) => {
+    if (l.isTrip) return;
+    const d = new Date(l.date);
+    if (d < start || d > end) return;
+    touch(bucketKeyOf(l.date, bucket)).cost += calcEntryCost(l);
+  });
+
+  return [...map.values()]
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map((r) => ({ ...r, profit: r.revenue - r.cost, label: bucketLabelOf(r.key, bucket) }));
+};
+
+// Series of ISO-week buckets spanning [startDate, endDate] for heatmap columns.
+export const weekColumns = (startDate, endDate) => {
+  const cur = startOfWeek(startDate);
+  const end = new Date(endDate);
+  const cols = [];
+  let guard = 0;
+  while (cur <= end && guard < 80) {
+    const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+    cols.push({
+      key,
+      label: cur.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+      short: `${cur.getDate()}/${cur.getMonth() + 1}`,
+      weekKey: key,
+    });
+    cur.setDate(cur.getDate() + 7);
+    guard += 1;
+  }
+  return cols;
+};
+
+// Map of `${rowKey}|${weekKey}` -> summed hours, for heatmap lookups.
+export const hoursByRowWeek = (logs, rowKeyOf) => {
+  const map = new Map();
+  (logs || []).forEach((l) => {
+    const rk = rowKeyOf(l);
+    if (!rk) return;
+    const wk = bucketKeyOf(l.date, 'week');
+    const k = `${rk}|${wk}`;
+    map.set(k, (map.get(k) || 0) + Number(l.totalHours || 0));
+  });
+  return map;
+};
+
+// 12-bucket sparkline series (numbers) for a stat tile, from any log list.
+export const sparkSeries = (logs, startDate, endDate, valueOf) => {
+  const trend = buildTrend(logs, startDate, endDate);
+  const vals = trend.map(valueOf);
+  return vals.length > 24 ? vals.slice(-24) : vals;
+};

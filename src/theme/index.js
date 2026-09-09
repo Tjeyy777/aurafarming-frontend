@@ -11,12 +11,38 @@ export const FONT_SANS =
 export const FONT_MONO =
   "'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace";
 
-// Categorical palette for charts — literal hex, used by the Recharts dashboards.
-// Same in both themes; only axis / grid / label colours swap (see chart code).
+// Categorical chart palette — CVD-validated (dataviz method). Fixed hue order,
+// never cycled: a 9th series folds into "Other". Light + dark are the same eight
+// hues stepped for each surface. Prefer `theme.palette.chart` in components;
+// this export is the light set for non-theme call sites.
 export const CHART_SERIES = [
-  '#3B82F6', '#F59E0B', '#14B8A6', '#A855F7',
-  '#EC4899', '#84CC16', '#64748B', '#F97316',
+  '#2A78D6', '#EB6834', '#1BAF7A', '#EDA100',
+  '#E87BA4', '#008300', '#4A3AA7', '#E34948',
 ];
+
+const CHART_TOKENS = {
+  light: {
+    series: ['#2A78D6', '#EB6834', '#1BAF7A', '#EDA100', '#E87BA4', '#008300', '#4A3AA7', '#E34948'],
+    // single-hue blue ramp, light→dark, for magnitude bars & heatmaps (ordinal-safe: no lighter than step 250)
+    sequential: ['#86B6EF', '#6DA7EC', '#5598E7', '#3987E5', '#2A78D6', '#256ABF', '#1C5CAB'],
+    grid: '#E4E1DC',
+    axis: '#928C84',
+    baseline: '#D6D2CB',
+    up: '#15803D',
+    down: '#DC2626',
+    other: '#928C84',
+  },
+  dark: {
+    series: ['#3987E5', '#D95926', '#199E70', '#C98500', '#D55181', '#008300', '#9085E9', '#E66767'],
+    sequential: ['#184F95', '#1C5CAB', '#256ABF', '#2A78D6', '#3987E5', '#5598E7', '#6DA7EC'],
+    grid: '#332F2B',
+    axis: '#78726A',
+    baseline: '#403B36',
+    up: '#4ADE80',
+    down: '#F87171',
+    other: '#78726A',
+  },
+};
 
 const PALETTES = {
   light: {
@@ -33,6 +59,7 @@ const PALETTES = {
     surface2: '#F2F0ED',
     borderStrong: '#D6D2CB',
     textTertiary: '#928C84',
+    chart: CHART_TOKENS.light,
   },
   dark: {
     mode: 'dark',
@@ -48,6 +75,7 @@ const PALETTES = {
     surface2: '#2A2724',
     borderStrong: '#403B36',
     textTertiary: '#78726A',
+    chart: CHART_TOKENS.dark,
   },
 };
 

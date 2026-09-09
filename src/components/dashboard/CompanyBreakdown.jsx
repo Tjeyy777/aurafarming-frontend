@@ -1,33 +1,29 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Grid, MenuItem, TextField, Typography, Stack, useTheme } from '@mui/material';
+import { Box, Grid, MenuItem, TextField, Typography, Stack } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-} from 'recharts';
 import PageHeader from '../common/PageHeader';
-import { StatCard, ChartCard, ChartTooltip, EmptyState, HBarChart, MiniTable } from './DashboardKit';
 import {
-  CHART_COLORS, calcEntryCost, filterLogsByRange, buildTrend, topNplusOther,
-  fmtCurrency, fmtCompactCurrency, fmtNumber, fmtHours,
+  StatCard, ChartCard, ChartWithTable, EmptyState,
+  HBarChart, TrendChart, ShareBar, Heatmap, MiniTable,
+} from './DashboardKit';
+import {
+  calcEntryCost, filterLogsByRange, buildTrend, topNplusOther,
+  weekColumns, bucketKeyOf, fmtCurrency, fmtCompactCurrency, fmtNumber, fmtHours,
 } from './dashboardUtils';
 
 const ALL = '__ALL__';
 const UNASSIGNED = '__UNASSIGNED__';
+const REVENUE = '#2A78D6';
 
 export default function CompanyBreakdown({ logs, parties = [], startDate, endDate }) {
-  const theme = useTheme();
-  const axis = theme.palette.text.secondary;
-  const gridStroke = theme.palette.divider;
   const [selected, setSelected] = useState(ALL);
 
   const periodLogs = useMemo(
     () => filterLogsByRange(logs, startDate, endDate),
     [logs, startDate, endDate],
   );
-
   const hasUnassigned = useMemo(() => periodLogs.some((l) => !l.companyId), [periodLogs]);
 
-  // Per-company aggregate (drives the "All companies" overview + share math).
   const perCompany = useMemo(() => {
     const map = new Map();
     periodLogs.forEach((l) => {
@@ -42,10 +38,7 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
     return [...map.values()].sort((a, b) => b.cost - a.cost);
   }, [periodLogs]);
 
-  const grandTotalCost = useMemo(
-    () => perCompany.reduce((s, c) => s + c.cost, 0),
-    [perCompany],
-  );
+  const grandTotalCost = useMemo(() => perCompany.reduce((s, c) => s + c.cost, 0), [perCompany]);
 
   const selectedLogs = useMemo(() => {
     if (selected === ALL) return periodLogs;
@@ -60,9 +53,7 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
     const ourHours = main.reduce((s, l) => s + Number(l.totalHours || 0), 0);
     const tripHours = trips.reduce((s, l) => s + Number(l.totalHours || 0), 0);
     const vehicles = new Set(selectedLogs.map((l) => l.vehicleId?._id).filter(Boolean));
-    const drivers = new Set(
-      selectedLogs.map((l) => (l.driverName || '').trim().toLowerCase()).filter(Boolean),
-    );
+    const drivers = new Set(selectedLogs.map((l) => (l.driverName || '').trim().toLowerCase()).filter(Boolean));
     const totalHours = ourHours + tripHours;
     return {
       totalCost, ourHours, tripHours,
@@ -79,9 +70,7 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
       const key = l.vehicleId?.vehicleNumber || 'Unknown';
       if (!map.has(key)) {
         map.set(key, {
-          vehicle: key,
-          type: l.vehicleId?.vehicleType || '—',
-          owner: l.vehicleId?.ownerName || '—',
+          vehicle: key, type: l.vehicleId?.vehicleType || '—', owner: l.vehicleId?.ownerName || '—',
           hours: 0, cost: 0, trips: 0,
         });
       }
@@ -93,35 +82,59 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
     return [...map.values()].sort((a, b) => b.cost - a.cost);
   }, [selectedLogs]);
 
+  const byType = useMemo(() => {
+    const map = new Map();
+    selectedLogs.forEach((l) => {
+      const key = l.vehicleId?.vehicleType || 'Unspecified';
+      map.set(key, (map.get(key) || 0) + calcEntryCost(l));
+    });
+    return [...map.entries()]
+      .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))
+      .filter((r) => r.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [selectedLogs]);
+
   const byMaterial = useMemo(() => {
     const map = new Map();
     selectedLogs.forEach((l) => {
       const key = l.materialId?.name || 'Unspecified';
-      if (!map.has(key)) map.set(key, { name: key, value: 0, hours: 0 });
-      const row = map.get(key);
-      row.value += calcEntryCost(l);
-      row.hours += Number(l.totalHours || 0);
+      map.set(key, (map.get(key) || 0) + calcEntryCost(l));
     });
-    return [...map.values()].filter((r) => r.value > 0).sort((a, b) => b.value - a.value);
+    return [...map.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .filter((r) => r.value > 0)
+      .sort((a, b) => b.value - a.value);
   }, [selectedLogs]);
 
-  const trend = useMemo(
-    () => buildTrend(selectedLogs, startDate, endDate),
-    [selectedLogs, startDate, endDate],
-  );
+  const trend = useMemo(() => buildTrend(selectedLogs, startDate, endDate), [selectedLogs, startDate, endDate]);
+
+  // Vehicle × week utilisation heatmap
+  const heat = useMemo(() => {
+    const cols = weekColumns(startDate, endDate);
+    const vehicleRows = byVehicle.slice(0, 16).map((v) => ({ key: v.vehicle, label: v.vehicle }));
+    const map = new Map();
+    selectedLogs.forEach((l) => {
+      const vk = l.vehicleId?.vehicleNumber;
+      if (!vk) return;
+      const wk = bucketKeyOf(l.date, 'week');
+      const k = `${vk}|${wk}`;
+      map.set(k, (map.get(k) || 0) + Number(l.totalHours || 0));
+    });
+    return { cols, rows: vehicleRows, get: (r, c) => map.get(`${r.key}|${c.weekKey}`) || 0 };
+  }, [selectedLogs, byVehicle, startDate, endDate]);
 
   const selectedName = selected === ALL
-    ? 'All Companies'
-    : selected === UNASSIGNED
-      ? 'Unassigned'
+    ? 'All companies'
+    : selected === UNASSIGNED ? 'Unassigned'
       : parties.find((p) => p._id === selected)?.name || 'Company';
 
   const vehicleChartData = useMemo(
-    () => topNplusOther(byVehicle.map((v) => ({ name: v.vehicle, cost: v.cost })), 'cost', 10),
+    () => topNplusOther(byVehicle.map((v) => ({ name: v.vehicle, value: v.cost })), 'value', 10),
     [byVehicle],
   );
   const materialChartData = useMemo(() => topNplusOther(byMaterial, 'value', 8), [byMaterial]);
-  const companyChartData = useMemo(() => topNplusOther(perCompany, 'cost', 12), [perCompany]);
+  const companyChartData = useMemo(() => topNplusOther(perCompany.map((c) => ({ name: c.name, value: c.cost, __other: c.__other })), 'value', 12), [perCompany]);
+  const costSpark = trend.map((d) => d.cost);
 
   return (
     <Box>
@@ -131,144 +144,133 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
         subtitle="Rented machinery cost, hours and usage per owner company"
         actions={(
           <TextField
-            select
-            size="small"
-            label="Company"
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
+            select size="small" label="Company"
+            value={selected} onChange={(e) => setSelected(e.target.value)}
             sx={{ minWidth: 240 }}
           >
-            <MenuItem value={ALL}>All Companies</MenuItem>
-            {parties.map((p) => (
-              <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
-            ))}
+            <MenuItem value={ALL}>All companies</MenuItem>
+            {parties.map((p) => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
             {hasUnassigned && <MenuItem value={UNASSIGNED}>Unassigned</MenuItem>}
           </TextField>
         )}
       />
 
       {periodLogs.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary', textAlign: 'center', py: 6 }}>
-          No rented machinery activity in this period.
-        </Typography>
+        <EmptyState title="No rented machinery activity" description="Nothing was logged in this period." dense />
       ) : (
         <Stack spacing={3}>
           <Grid container spacing={2.5}>
             <Grid item xs={6} md={4} lg={2}>
-              <StatCard
-                label={`${selectedName} — Cost`}
-                value={fmtCurrency(stats.totalCost)}
-                accent={CHART_COLORS[0]}
-                sub={`${stats.share.toFixed(1)}% of all rented spend`}
-              />
+              <StatCard label={`${selectedName} — cost`} value={fmtCurrency(stats.totalCost)} sub={`${stats.share.toFixed(1)}% of rented spend`} trend={costSpark} trendColor={REVENUE} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
-              <StatCard label="Work Hours" value={fmtNumber(stats.ourHours)} sub={`+ ${fmtNumber(stats.tripHours)} trip hrs`} />
+              <StatCard label="Work hours" value={fmtNumber(stats.ourHours)} sub={`+ ${fmtNumber(stats.tripHours)} trip hrs`} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
-              <StatCard label="Entries / Trips" value={`${stats.entries} / ${stats.trips}`} />
+              <StatCard label="Entries / trips" value={`${stats.entries} / ${stats.trips}`} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
-              <StatCard label="Effective Rate" value={`${fmtCurrency(stats.effRate)}/hr`} accent="success.main" />
+              <StatCard label="Effective rate" value={`${fmtCurrency(stats.effRate)}/hr`} accent="success.main" />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
-              <StatCard label="Vehicles Used" value={stats.vehicles} />
+              <StatCard label="Vehicles used" value={stats.vehicles} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
               <StatCard label="Drivers" value={stats.drivers} />
             </Grid>
           </Grid>
 
+          {selected === ALL && companyChartData.length > 1 && (
+            <ChartCard title="Share of rented spend by company">
+              <ShareBar data={companyChartData} valueKey="value" valueFormatter={fmtCurrency} />
+            </ChartCard>
+          )}
+
           <Grid container spacing={3} alignItems="flex-start">
             {selected === ALL && (
               <Grid item xs={12} lg={6}>
-                <ChartCard title="Cost by company">
-                  {companyChartData.length === 0
+                <ChartWithTable
+                  title="Cost by company"
+                  chart={companyChartData.length === 0
                     ? <EmptyState dense />
-                    : (
-                      <HBarChart
-                        data={companyChartData}
-                        labelKey="name"
-                        valueKey="cost"
-                        valueFormatter={fmtCompactCurrency}
-                        colorByIndex
-                        labelWidth={150}
-                      />
-                    )}
-                </ChartCard>
+                    : <HBarChart data={companyChartData} valueKey="value" valueFormatter={fmtCompactCurrency} colorByIndex labelWidth={150} />}
+                  table={(
+                    <MiniTable
+                      minWidth={360}
+                      columns={[
+                        { key: 'name', label: 'Company', bold: true },
+                        { key: 'hours', label: 'Hours', align: 'right', mono: true, render: (r) => fmtNumber(r.hours) },
+                        { key: 'cost', label: 'Cost', align: 'right', mono: true, bold: true, color: 'success.main', render: (r) => fmtCurrency(r.cost) },
+                      ]}
+                      rows={perCompany}
+                    />
+                  )}
+                />
               </Grid>
             )}
 
             <Grid item xs={12} lg={selected === ALL ? 6 : 12}>
-              <ChartCard title="Cost by vehicle" subtitle={vehicleChartData.length ? `Top ${Math.min(10, byVehicle.length)} of ${byVehicle.length}` : undefined}>
-                {vehicleChartData.length === 0
+              <ChartWithTable
+                title="Cost by vehicle"
+                subtitle={byVehicle.length > 10 ? `Top 10 of ${byVehicle.length}` : undefined}
+                chart={vehicleChartData.length === 0
                   ? <EmptyState dense />
-                  : (
-                    <HBarChart
-                      data={vehicleChartData}
-                      labelKey="name"
-                      valueKey="cost"
-                      valueFormatter={fmtCompactCurrency}
-                      color={CHART_COLORS[0]}
-                      labelWidth={130}
-                    />
-                  )}
-              </ChartCard>
+                  : <HBarChart data={vehicleChartData} valueKey="value" valueFormatter={fmtCompactCurrency} color={REVENUE} labelWidth={130} />}
+                table={(
+                  <MiniTable
+                    minWidth={560}
+                    columns={[
+                      { key: 'vehicle', label: 'Vehicle', bold: true },
+                      { key: 'type', label: 'Type', color: 'text.secondary' },
+                      { key: 'owner', label: 'Owner', color: 'text.secondary' },
+                      { key: 'hours', label: 'Hours', align: 'right', mono: true, render: (r) => fmtNumber(r.hours) },
+                      { key: 'trips', label: 'Trips', align: 'right', mono: true },
+                      { key: 'cost', label: 'Cost', align: 'right', mono: true, bold: true, color: 'success.main', render: (r) => fmtCurrency(r.cost) },
+                    ]}
+                    rows={byVehicle}
+                  />
+                )}
+              />
             </Grid>
 
             <Grid item xs={12} lg={6}>
               <ChartCard title="Cost by material">
                 {materialChartData.length === 0
                   ? <EmptyState dense />
+                  : <HBarChart data={materialChartData} valueKey="value" valueFormatter={fmtCompactCurrency} colorByIndex labelWidth={130} />}
+              </ChartCard>
+            </Grid>
+
+            <Grid item xs={12} lg={6}>
+              <ChartCard title="Cost by vehicle type">
+                {byType.length === 0
+                  ? <EmptyState dense />
+                  : <HBarChart data={byType} valueKey="value" valueFormatter={fmtCompactCurrency} colorByIndex labelWidth={110} />}
+              </ChartCard>
+            </Grid>
+
+            <Grid item xs={12}>
+              <ChartCard title={`Cost trend — ${selectedName}`} height={300}>
+                {trend.length === 0
+                  ? <EmptyState dense />
                   : (
-                    <HBarChart
-                      data={materialChartData}
-                      labelKey="name"
-                      valueKey="value"
+                    <TrendChart
+                      data={trend}
                       valueFormatter={fmtCompactCurrency}
-                      colorByIndex
-                      labelWidth={130}
+                      series={[{ key: 'cost', name: 'Cost', color: REVENUE }]}
                     />
                   )}
               </ChartCard>
             </Grid>
 
-            <Grid item xs={12} lg={6}>
-              <ChartCard title={`Cost trend — ${selectedName}`} height={320}>
-                {trend.length === 0 ? <EmptyState dense /> : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trend} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
-                      <defs>
-                        <linearGradient id="cbCostFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={CHART_COLORS[0]} stopOpacity={0.28} />
-                          <stop offset="95%" stopColor={CHART_COLORS[0]} stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                      <XAxis dataKey="label" tick={{ fill: axis, fontSize: 12 }} minTickGap={24} />
-                      <YAxis tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} width={56} />
-                      <Tooltip content={<ChartTooltip valueFormatter={(v, k) => (k === 'cost' ? fmtCurrency(v) : fmtHours(v))} />} />
-                      <Area type="monotone" dataKey="cost" name="Cost" stroke={CHART_COLORS[0]} fill="url(#cbCostFill)" strokeWidth={2} dot={trend.length > 24 ? false : { r: 2 }} activeDot={{ r: 4 }} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
+            <Grid item xs={12}>
+              <ChartCard title="Vehicle utilisation" subtitle="Hours worked per vehicle, per week">
+                {heat.rows.length === 0 || heat.cols.length === 0
+                  ? <EmptyState dense />
+                  : <Heatmap rows={heat.rows} cols={heat.cols} getValue={heat.get} valueFormatter={fmtHours} />}
               </ChartCard>
             </Grid>
           </Grid>
-
-          <MiniTable
-            minWidth={640}
-            columns={[
-              { key: 'vehicle', label: 'Vehicle', bold: true },
-              { key: 'type', label: 'Type', color: 'text.secondary' },
-              { key: 'owner', label: 'Owner', color: 'text.secondary' },
-              { key: 'hours', label: 'Hours', align: 'right', mono: true, render: (r) => fmtNumber(r.hours) },
-              { key: 'trips', label: 'Trips', align: 'right', mono: true },
-              { key: 'cost', label: 'Cost', align: 'right', bold: true, mono: true, color: 'success.main', render: (r) => fmtCurrency(r.cost) },
-            ]}
-            rows={byVehicle}
-            emptyText="No vehicle activity for this company."
-          />
         </Stack>
       )}
     </Box>
