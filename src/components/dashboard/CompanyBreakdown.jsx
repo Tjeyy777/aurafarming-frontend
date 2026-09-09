@@ -3,7 +3,7 @@ import { Box, Grid, MenuItem, TextField, Typography, Stack, useTheme } from '@mu
 import BusinessIcon from '@mui/icons-material/Business';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  PieChart, Pie, Cell, AreaChart, Area, Legend,
+  PieChart, Pie, Cell, AreaChart, Area, Legend, LabelList,
 } from 'recharts';
 import { SectionHeader, StatCard, ChartCard, ChartTooltip, EmptyState, MiniTable } from './DashboardKit';
 import {
@@ -117,6 +117,7 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
       : parties.find((p) => p._id === selected)?.name || 'Company';
 
   const currencyTip = (v) => fmtCurrency(v);
+  const labelFill = theme.palette.text.secondary;
 
   return (
     <Box>
@@ -149,8 +150,8 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
         </Typography>
       ) : (
         <Stack spacing={3}>
-          <Grid container spacing={2}>
-            <Grid item xs={6} md={3}>
+          <Grid container spacing={2.5}>
+            <Grid item xs={6} md={4} lg={2}>
               <StatCard
                 label={`${selectedName} — Cost`}
                 value={fmtCurrency(stats.totalCost)}
@@ -158,37 +159,38 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
                 sub={`${stats.share.toFixed(1)}% of all rented spend`}
               />
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid item xs={6} md={4} lg={2}>
               <StatCard label="Work Hours" value={fmtNumber(stats.ourHours)} sub={`+ ${fmtNumber(stats.tripHours)} trip hrs`} />
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid item xs={6} md={4} lg={2}>
               <StatCard label="Entries / Trips" value={`${stats.entries} / ${stats.trips}`} />
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid item xs={6} md={4} lg={2}>
               <StatCard label="Effective Rate" value={`${fmtCurrency(stats.effRate)}/hr`} accent="#10b981" />
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid item xs={6} md={4} lg={2}>
               <StatCard label="Vehicles Used" value={stats.vehicles} />
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid item xs={6} md={4} lg={2}>
               <StatCard label="Drivers" value={stats.drivers} />
             </Grid>
           </Grid>
 
           <Grid container spacing={3}>
             {selected === ALL && (
-              <Grid item xs={12} md={6}>
-                <ChartCard title="Cost by Company" height={Math.max(300, perCompany.length * 42)}>
+              <Grid item xs={12}>
+                <ChartCard title="Cost by Company" height={Math.max(360, perCompany.length * 52 + 40)}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={perCompany} layout="vertical" margin={{ left: 10, right: 24 }}>
+                    <BarChart data={perCompany} layout="vertical" margin={{ left: 20, right: 72, top: 4, bottom: 4 }} barCategoryGap="28%">
                       <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
-                      <XAxis type="number" tick={{ fill: axis, fontSize: 11 }} tickFormatter={fmtCompactCurrency} />
-                      <YAxis type="category" dataKey="name" width={110} tick={{ fill: axis, fontSize: 11 }} />
+                      <XAxis type="number" tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} />
+                      <YAxis type="category" dataKey="name" width={150} tick={{ fill: axis, fontSize: 12 }} />
                       <Tooltip content={<ChartTooltip valueFormatter={currencyTip} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                      <Bar dataKey="cost" name="Cost" radius={[0, 6, 6, 0]}>
+                      <Bar dataKey="cost" name="Cost" radius={[0, 6, 6, 0]} maxBarSize={34}>
                         {perCompany.map((e, i) => (
                           <Cell key={e.id} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                         ))}
+                        <LabelList dataKey="cost" position="right" formatter={fmtCompactCurrency} style={{ fill: labelFill, fontSize: 12, fontWeight: 700 }} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
@@ -196,34 +198,34 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
               </Grid>
             )}
 
-            <Grid item xs={12} md={selected === ALL ? 6 : 7}>
-              <ChartCard title={selected === ALL ? 'Cost by Vehicle (all companies)' : 'Cost by Vehicle'}>
+            <Grid item xs={12} lg={7}>
+              <ChartCard title={selected === ALL ? 'Cost by Vehicle (all companies)' : 'Cost by Vehicle'} height={440}>
                 {byVehicle.length === 0 ? <EmptyState /> : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={byVehicle.slice(0, 12)} margin={{ left: 0, right: 10 }}>
+                    <BarChart data={byVehicle.slice(0, 14)} margin={{ left: 8, right: 16, top: 8, bottom: 8 }} barCategoryGap="22%">
                       <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                      <XAxis dataKey="vehicle" tick={{ fill: axis, fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
-                      <YAxis tick={{ fill: axis, fontSize: 11 }} tickFormatter={fmtCompactCurrency} />
+                      <XAxis dataKey="vehicle" tick={{ fill: axis, fontSize: 11 }} interval={0} angle={-35} textAnchor="end" height={78} />
+                      <YAxis tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} width={62} />
                       <Tooltip content={<ChartTooltip valueFormatter={currencyTip} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                      <Bar dataKey="cost" name="Cost" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="cost" name="Cost" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={52} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
               </ChartCard>
             </Grid>
 
-            <Grid item xs={12} md={5}>
-              <ChartCard title="Cost by Material">
+            <Grid item xs={12} lg={5}>
+              <ChartCard title="Cost by Material" height={440}>
                 {byMaterial.length === 0 ? <EmptyState /> : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={byMaterial} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={52} paddingAngle={2}>
+                      <Pie data={byMaterial} dataKey="value" nameKey="name" cx="50%" cy="46%" outerRadius={120} innerRadius={70} paddingAngle={2}>
                         {byMaterial.map((e, i) => (
                           <Cell key={e.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip content={<ChartTooltip valueFormatter={currencyTip} />} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} verticalAlign="bottom" height={36} />
                     </PieChart>
                   </ResponsiveContainer>
                 )}
@@ -231,10 +233,10 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
             </Grid>
 
             <Grid item xs={12}>
-              <ChartCard title={`Cost Trend — ${selectedName}`}>
+              <ChartCard title={`Cost Trend — ${selectedName}`} height={400}>
                 {trend.length === 0 ? <EmptyState /> : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trend} margin={{ left: 0, right: 10 }}>
+                    <AreaChart data={trend} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
                       <defs>
                         <linearGradient id="cbCostFill" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
@@ -242,10 +244,10 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                      <XAxis dataKey="label" tick={{ fill: axis, fontSize: 11 }} />
-                      <YAxis tick={{ fill: axis, fontSize: 11 }} tickFormatter={fmtCompactCurrency} />
+                      <XAxis dataKey="label" tick={{ fill: axis, fontSize: 12 }} minTickGap={16} />
+                      <YAxis tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} width={62} />
                       <Tooltip content={<ChartTooltip valueFormatter={(v, k) => (k === 'cost' ? fmtCurrency(v) : fmtHours(v))} />} />
-                      <Area type="monotone" dataKey="cost" name="Cost" stroke="#3b82f6" fill="url(#cbCostFill)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="cost" name="Cost" stroke="#3b82f6" fill="url(#cbCostFill)" strokeWidth={2.5} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}

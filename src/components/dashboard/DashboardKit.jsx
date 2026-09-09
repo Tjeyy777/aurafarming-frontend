@@ -65,7 +65,7 @@ export function SectionHeader({ icon: Icon, color, title, subtitle, action }) {
   );
 }
 
-export function ChartCard({ title, subtitle, children, height = 300 }) {
+export function ChartCard({ title, subtitle, children, height = 420 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   return (
@@ -77,13 +77,13 @@ export function ChartCard({ title, subtitle, children, height = 300 }) {
         height: '100%',
       }}
     >
-      <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+      <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{title}</Typography>
         {subtitle && (
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>{subtitle}</Typography>
         )}
       </Box>
-      <CardContent sx={{ p: 2, height, '&:last-child': { pb: 2 } }}>{children}</CardContent>
+      <CardContent sx={{ p: 2.5, pt: 2.5, height, '&:last-child': { pb: 2.5 } }}>{children}</CardContent>
     </Card>
   );
 }

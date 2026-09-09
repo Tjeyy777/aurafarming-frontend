@@ -148,7 +148,7 @@ export default function ProfitDashboard() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10 }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1840px", mx: "auto", pb: 10 }}>
       {/* Header & Controls */}
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} sx={{ mb: 4, gap: 2 }}>
         <Box>
