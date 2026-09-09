@@ -151,20 +151,20 @@ function MachineryDashboardView({ onNavigate }) {
       {/* Dynamic Sub-header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{ 
-            width: 42, height: 42, borderRadius: '10px', 
-            bgcolor: 'primary.main', 
+          <Box sx={{
+            width: 34, height: 34, borderRadius: '8px',
+            bgcolor: 'surface2', color: 'text.secondary',
+            border: (t) => `1px solid ${t.palette.divider}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: isDark ? '0 0 15px rgba(249, 115, 22, 0.3)' : 'none'
           }}>
-            <SettingsIcon sx={{ color: '#fff', fontSize: 22 }} />
+            <SettingsIcon sx={{ fontSize: 19 }} />
           </Box>
           <Box>
-            <Typography variant="h5" fontWeight={900} sx={{ color: 'text.primary', letterSpacing: '-0.02em' }}>
-              Machinery Fleet
+            <Typography variant="h1" sx={{ fontSize: '1.375rem' }}>
+              Machinery
             </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, letterSpacing: '0.1em' }}>
-              {isDark ? '// FLEET_OPERATIONS' : 'Operational Assets'}
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Fleet status and service tracking
             </Typography>
           </Box>
         </Box>
@@ -199,14 +199,9 @@ function MachineryDashboardView({ onNavigate }) {
 
         {/* Action Center - Themed Alert Box */}
         {actionItems.length > 0 && (
-          <Paper sx={{ 
-            p: 2.5, borderRadius: 4, 
-            border: `1px solid ${theme.palette.divider}`,
-            bgcolor: isDark ? 'rgba(13, 16, 23, 0.6)' : 'background.paper',
-            backdropFilter: isDark ? 'blur(10px)' : 'none'
-          }}>
-            <Typography variant="overline" sx={{ fontWeight: 900, color: 'text.secondary', mb: 2, display: 'block' }}>
-              ⚡ Immediate Action Items
+          <Paper variant="outlined" sx={{ p: 2.5, borderRadius: '10px' }}>
+            <Typography variant="overline" sx={{ color: 'text.secondary', mb: 2, display: 'block' }}>
+              Needs attention
             </Typography>
             <Grid container spacing={2}>
               {actionItems.map((item, i) => (
@@ -226,7 +221,7 @@ function MachineryDashboardView({ onNavigate }) {
                       }
                     }}>
                     <Box sx={{ color: item.color, display: 'flex' }}>{item.icon}</Box>
-                    <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'text.primary' }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'text.primary' }}>
                       {item.text}
                     </Typography>
                   </Box>
@@ -250,18 +245,17 @@ function MachineryDashboardView({ onNavigate }) {
         ) : error ? (
           <Alert severity="error" variant="filled">Critical error loading machinery data.</Alert>
         ) : filtered.length === 0 ? (
-          <Paper variant="outlined" sx={{ textAlign: 'center', py: 12, borderRadius: 4, borderStyle: 'dashed' }}>
-            <Typography variant="h2" sx={{ mb: 2 }}>🛠️</Typography>
-            <Typography variant="h5" fontWeight={800}>Fleet Status: Zero Matches</Typography>
-            <Typography color="text.secondary" sx={{ maxWidth: 400, mx: 'auto', mt: 1 }}>
-              Adjust your filters or code search to find specific machinery.
+          <Paper variant="outlined" sx={{ textAlign: 'center', py: 10, borderRadius: '10px', borderStyle: 'dashed' }}>
+            <Typography variant="h4">No machines match these filters</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 360, mx: 'auto', mt: 1 }}>
+              Try clearing the search or filters to see the full fleet.
             </Typography>
-            <Button 
-                variant="text" 
-                sx={{ mt: 3, fontWeight: 800 }} 
+            <Button
+                variant="text"
+                sx={{ mt: 2 }}
                 onClick={() => { setSearch(''); setStatusFilter('All'); setServiceFilter('All'); setTypeFilter('All'); }}
             >
-              Reset Terminal View
+              Clear filters
             </Button>
           </Paper>
         ) : (
@@ -301,14 +295,10 @@ function MachineryDashboardView({ onNavigate }) {
       </Stack>
 
       {/* Floating Action Button */}
-      <Fab 
-        color="primary" 
+      <Fab
+        color="primary"
         onClick={() => setShowAddMachine(true)}
-        sx={{ 
-          position: 'fixed', bottom: 32, right: 32, 
-          borderRadius: '16px',
-          boxShadow: isDark ? '0 8px 32px rgba(249, 115, 22, 0.4)' : '0 8px 32px rgba(0,0,0,0.2)'
-        }}
+        sx={{ position: 'fixed', bottom: 28, right: 28, borderRadius: '14px' }}
       >
         <AddIcon />
       </Fab>
@@ -331,7 +321,7 @@ function MachineryDashboardView({ onNavigate }) {
       <DeleteConfirmModal
         open={!!deleteMachineTarget}
         title="Remove Asset"
-        message="This will archive the machine from active logs. History remains encrypted."
+        message="This archives the machine from active logs. Its history is kept."
         onConfirm={handleDeleteMachine}
         onCancel={() => setDeleteMachineTarget(null)}
         loading={deleteMachine.isPending}

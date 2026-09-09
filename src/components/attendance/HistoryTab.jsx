@@ -36,7 +36,7 @@ function MiniCalendar({ selectedDate, onChange, attendanceMap }) {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
         <IconButton size="small" onClick={prevMonth}><NavigateBeforeIcon /></IconButton>
-        <Typography fontWeight={800} variant="body1">{monthStr}</Typography>
+        <Typography fontWeight={700} variant="body1">{monthStr}</Typography>
         <IconButton size="small" onClick={nextMonth}><NavigateNextIcon /></IconButton>
       </Stack>
 
@@ -261,7 +261,7 @@ export default function HistoryTab({ employees, roles, parentRoles }) {
             {/* Calendar */}
             {selectedEmployee && (
               <>
-                <Typography variant="overline" fontWeight={800} color="text.secondary">
+                <Typography variant="overline" fontWeight={700} color="text.secondary">
                   Attendance Calendar
                 </Typography>
                 <MiniCalendar

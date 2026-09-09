@@ -65,7 +65,7 @@ function StatCard({ label, value, icon: Icon, accent, loading }) {
           }}>
             {label}
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 900, mt: 0.5, color: accent || 'text.primary' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5, color: accent || 'text.primary' }}>
             {loading ? <CircularProgress size={20} /> : value}
           </Typography>
         </Box>
@@ -117,7 +117,7 @@ function ColHeader({ headers, showCheckbox, onSelectAll, isAllSelected, isIndete
           key={h}
           variant="caption"
           sx={{
-            fontWeight: 800,
+            fontWeight: 700,
             textTransform: 'uppercase',
             letterSpacing: '0.07em',
             color: 'text.secondary',
@@ -373,7 +373,7 @@ export default function RentedMachineryPage() {
             <Box sx={{ bgcolor: 'primary.main', borderRadius: 2, p: 0.9, display: 'flex' }}>
               <LocalShippingIcon sx={{ fontSize: 22, color: '#fff' }} />
             </Box>
-            <Typography variant="h5" sx={{ fontWeight: 900 }}>Rented Machinery Control</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>Rented Machinery Control</Typography>
           </Stack>
           <Typography variant="body2" sx={{ color: 'text.secondary', pl: '46px' }}>
             Track rentals, trips, and billing
@@ -451,7 +451,7 @@ export default function RentedMachineryPage() {
       {selectedIds.length > 0 && (
         <Paper sx={{ p: 2, mb: 2, borderRadius: 2, bgcolor: isDark ? 'rgba(211,47,47,0.15)' : '#fff5f5', border: `1px solid ${theme.palette.error.light}` }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'error.main' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'error.main' }}>
               {selectedIds.length} items selected
             </Typography>
             <Button
@@ -459,7 +459,7 @@ export default function RentedMachineryPage() {
               color="error"
               startIcon={<DeleteIcon />}
               onClick={() => handleDelete(selectedIds)}
-              sx={{ fontWeight: 800, borderRadius: 2 }}
+              sx={{ fontWeight: 700, borderRadius: 2 }}
             >
               Delete Selected
             </Button>
@@ -612,7 +612,7 @@ export default function RentedMachineryPage() {
 
                         {isEditing ? (
                           <>
-                            <RowCell sx={{ fontWeight: 800 }}>{log.vehicleId?.vehicleNumber}</RowCell>
+                            <RowCell sx={{ fontWeight: 700 }}>{log.vehicleId?.vehicleNumber}</RowCell>
                             <TextField
                               select
                               size="small"
@@ -662,8 +662,8 @@ export default function RentedMachineryPage() {
                               value={editForm.driverName}
                               onChange={(e) => setEditForm(p => ({ ...p, driverName: e.target.value }))}
                             />
-                            <RowCell sx={{ fontWeight: 900, color: 'primary.main' }}>{fmtNumber(log.totalHours)}</RowCell>
-                            <RowCell sx={{ fontWeight: 900, color: 'success.main' }}>₹{fmtNumber(log.cost)}</RowCell>
+                            <RowCell sx={{ fontWeight: 700, color: 'primary.main' }}>{fmtNumber(log.totalHours)}</RowCell>
+                            <RowCell sx={{ fontWeight: 700, color: 'success.main' }}>₹{fmtNumber(log.cost)}</RowCell>
                             <TextField
                               size="small"
                               value={editForm.remarks}
@@ -676,15 +676,15 @@ export default function RentedMachineryPage() {
                           </>
                         ) : (
                           <>
-                            <RowCell sx={{ fontWeight: 800 }}>{log.vehicleId?.vehicleNumber}</RowCell>
+                            <RowCell sx={{ fontWeight: 700 }}>{log.vehicleId?.vehicleNumber}</RowCell>
                             <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>{log.companyId?.name || '—'}</RowCell>
                             <RowCell sx={{ color: 'info.main' }}>{log.materialId?.name || '—'}</RowCell>
                             <RowCell>{fmtDate(log.date)}</RowCell>
                             <RowCell>{fmtNumber(log.openingMeter)}</RowCell>
                             <RowCell>{fmtNumber(log.closingMeter)}</RowCell>
                             <RowCell>{log.driverName || '—'}</RowCell>
-                            <RowCell sx={{ fontWeight: 900, color: 'primary.main' }}>{fmtNumber(log.totalHours)}</RowCell>
-                            <RowCell sx={{ fontWeight: 900, color: 'success.main' }}>₹{fmtNumber(log.cost)}</RowCell>
+                            <RowCell sx={{ fontWeight: 700, color: 'primary.main' }}>{fmtNumber(log.totalHours)}</RowCell>
+                            <RowCell sx={{ fontWeight: 700, color: 'success.main' }}>₹{fmtNumber(log.cost)}</RowCell>
                             <RowCell>{log.remarks || '—'}</RowCell>
                             <Stack direction="row" spacing={0.5}>
                               <IconButton
@@ -719,7 +719,7 @@ export default function RentedMachineryPage() {
                                   label="TRIP"
                                   size="small"
                                   color="warning"
-                                  sx={{ fontSize: '0.6rem', fontWeight: 800, height: 20 }}
+                                  sx={{ fontSize: '0.6rem', fontWeight: 700, height: 20 }}
                                 />
 
                                 {isChildEditing ? (

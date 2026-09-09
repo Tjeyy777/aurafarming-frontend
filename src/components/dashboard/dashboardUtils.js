@@ -2,10 +2,10 @@
 // Driver Performance). All aggregation is done client-side from the rented
 // machinery logs, same pattern as ProfitDashboard.
 
-export const CHART_COLORS = [
-  '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444',
-  '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#a855f7',
-];
+import { CHART_SERIES } from '../../theme';
+
+// Categorical palette for the analytics charts — sourced from the design system.
+export const CHART_COLORS = CHART_SERIES;
 
 export const fmtCurrency = (val) =>
   new Intl.NumberFormat('en-IN', {

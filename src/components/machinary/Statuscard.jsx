@@ -48,10 +48,9 @@ export default function StatsCards({ stats, onFilterService }) {
                   right: 12, 
                   width: 6, 
                   height: 6, 
-                  borderRadius: '50%', 
+                  borderRadius: '50%',
                   bgcolor: card.statusColor,
-                  boxShadow: `0 0 8px ${card.statusColor}80`
-                }} 
+                }}
               />
             )}
 

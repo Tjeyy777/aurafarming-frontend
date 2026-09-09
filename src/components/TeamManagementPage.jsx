@@ -128,7 +128,7 @@ export default function TeamManagementPage() {
     <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mb: 3 }}>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: "-0.02em", mb: 0.5 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, color: "primary.main", letterSpacing: "-0.02em", mb: 0.5 }}>
             Team Management
           </Typography>
           <Typography sx={{ color: "text.secondary", fontSize: "0.95rem" }}>
@@ -211,7 +211,7 @@ export default function TeamManagementPage() {
       {/* Add / Edit Dialog */}
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="xs" PaperProps={{ sx: { borderRadius: 4 } }}>
         <form onSubmit={handleSubmit}>
-          <DialogTitle sx={{ fontWeight: 900 }}>
+          <DialogTitle sx={{ fontWeight: 700 }}>
             {isEditing ? "Edit Staff Account" : "Create Staff Account"}
           </DialogTitle>
           <DialogContent>

@@ -129,7 +129,7 @@ export default function RentedVehicleMasterPage() {
             <Box sx={{ bgcolor: 'primary.main', borderRadius: 2, p: 0.9, display: 'flex' }}>
               <LocalShippingIcon sx={{ fontSize: 22, color: '#fff' }} />
             </Box>
-            <Typography variant="h5" sx={{ fontWeight: 900 }}>Rented Vehicle Master</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>Rented Vehicle Master</Typography>
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ pl: '46px', mt: 0.5 }}>
             Manage rented vehicle database
@@ -206,7 +206,7 @@ export default function RentedVehicleMasterPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800 }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>
           {editingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}
         </DialogTitle>
         <DialogContent>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from "react";
 import {
-  ThemeProvider, createTheme, Box, Container, Typography,
+  ThemeProvider, createTheme, CssBaseline, Box, Container, Typography,
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   MenuItem, TextField, Alert, Stack, Chip, CircularProgress,
   ToggleButtonGroup, ToggleButton
@@ -47,8 +47,16 @@ import { fetchAllRentedLogs, fetchAllMachines } from "./utils/exportDataFetcher"
 // Pages that should use full viewport width (no Container constraint)
 const FULL_WIDTH_PAGES = ["Weighbridge", "Rented Logs", "Dashboard"];
 
+const readMode = () => {
+  try {
+    const saved = localStorage.getItem("aura.themeMode");
+    if (saved === "light" || saved === "dark") return saved;
+  } catch { /* ignore */ }
+  return "dark";
+};
+
 function App() {
-  const [mode, setMode] = useState("dark");
+  const [mode, setMode] = useState(readMode);
   const { user, isAuthenticated, logout } = useAuthStore();
   const isAdmin = user?.role === "admin";
   const [currentPage, setCurrentPage] = useState(isAdmin ? "Dashboard" : "Employees");
@@ -70,7 +78,12 @@ function App() {
   const { getAttendanceByDate } = useAttendance();
 
   const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
-  const toggleTheme = () => setMode((prev) => (prev === "light" ? "dark" : "light"));
+  const toggleTheme = () =>
+    setMode((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      try { localStorage.setItem("aura.themeMode", next); } catch { /* ignore */ }
+      return next;
+    });
   const isFullWidth = FULL_WIDTH_PAGES.includes(currentPage);
 
   const handleLogout = () => {
@@ -233,12 +246,10 @@ function App() {
       case "Team Management": return <TeamManagementPage />;
       default:
         return (
-          <Box sx={{ py: 8, textAlign: "center" }}>
-            <Typography variant="h3" sx={{ fontWeight: 800, color: "primary.main", mb: 2 }}>
-              {currentPage.toUpperCase()}
-            </Typography>
-            <Typography sx={{ color: "text.secondary", fontFamily: "monospace" }}>
-              [ STATUS: SYSTEM_OPERATIONAL // MODE: {mode.toUpperCase()} ]
+          <Box sx={{ py: 10, textAlign: "center" }}>
+            <Typography variant="h2" sx={{ mb: 1 }}>{currentPage}</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              This section isn't available yet.
             </Typography>
           </Box>
         );
@@ -248,6 +259,7 @@ function App() {
   if (!isAuthenticated) {
     return (
       <ThemeProvider theme={theme}>
+        <CssBaseline />
         <LoginPage />
       </ThemeProvider>
     );
@@ -255,6 +267,7 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
+      <CssBaseline />
       <Layout
         onNavigate={handleNavigate}
         currentPage={currentPage}
@@ -266,13 +279,7 @@ function App() {
           sx={{
             minHeight: "100vh",
             bgcolor: "background.default",
-            position: "relative",
-            transition: "background-color 0.3s ease",
-            backgroundImage:
-              mode === "dark"
-                ? `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`
-                : `linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)`,
-            backgroundSize: "40px 40px",
+            transition: "background-color 0.2s ease",
           }}
         >
           {isFullWidth ? (

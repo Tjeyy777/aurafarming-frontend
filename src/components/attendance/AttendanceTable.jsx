@@ -242,7 +242,7 @@ export default function AttendanceTable({ attendanceList, selected, setSelected,
                   <TableCell align="right">
                     <Typography
                       variant="body1"
-                      fontWeight={800}
+                      fontWeight={700}
                       sx={{ 
                         color: emp.totalPay > 0 ? (isDark ? "primary.main" : "primary.dark") : "text.disabled",
                         letterSpacing: '-0.02em'

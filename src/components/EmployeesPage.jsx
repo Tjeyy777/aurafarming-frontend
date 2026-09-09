@@ -179,7 +179,7 @@ export default function EmployeesPage() {
       {/* HEADER SECTION */}
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} sx={{ mb: 4, gap: 2 }}>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 900, color: isDark ? "primary.main" : "text.primary", letterSpacing: "-0.02em" }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, color: isDark ? "primary.main" : "text.primary", letterSpacing: "-0.02em" }}>
             Staff Intelligence
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
@@ -301,7 +301,7 @@ export default function EmployeesPage() {
                   }} 
                 />
                 
-                <Typography variant="h6" sx={{ fontWeight: 800, mt: 1.5 }}>{emp.name}</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700, mt: 1.5 }}>{emp.name}</Typography>
                 
                 <Stack direction="row" spacing={0.5} justifyContent="center" sx={{ mb: 1 }}>
                   <Chip 
@@ -309,10 +309,10 @@ export default function EmployeesPage() {
                     size="small" 
                     color={emp.isActive ? "success" : "error"}
                     variant="outlined"
-                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }}
+                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }}
                   />
                   {(!emp.dailyWage || !emp.role) && (
-                    <Chip label="Setup Required" color="warning" size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }} />
+                    <Chip label="Setup Required" color="warning" size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }} />
                   )}
                 </Stack>
 
@@ -339,7 +339,7 @@ export default function EmployeesPage() {
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f9f9f9', p: 1, borderRadius: 2 }}>
                     <Typography variant="caption" fontWeight={700}>DAILY RATE</Typography>
-                    <Typography variant="body2" fontWeight={900} color="primary.main">₹{emp.dailyWage}</Typography>
+                    <Typography variant="body2" fontWeight={700} color="primary.main">₹{emp.dailyWage}</Typography>
                   </Box>
                 </Stack>
 
@@ -389,7 +389,7 @@ export default function EmployeesPage() {
         maxWidth="sm"
         PaperProps={{ sx: { borderRadius: 4, backgroundImage: 'none', overflow: 'visible' } }}
       >
-        <DialogTitle sx={{ fontWeight: 900, fontSize: '1.5rem' }}>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.5rem' }}>
           {editingId ? "Update Profile" : "New Registration"}
         </DialogTitle>
 
@@ -467,7 +467,7 @@ export default function EmployeesPage() {
             onChange={(e) => setFormData({...formData, phone: e.target.value})}
           />
 
-          <Typography variant="overline" sx={{ fontWeight: 900, color: 'primary.main' }}>
+          <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main' }}>
             Verification Media
           </Typography>
 
@@ -516,7 +516,7 @@ export default function EmployeesPage() {
         maxWidth="md"
         PaperProps={{ sx: { borderRadius: 4 } }}
       >
-        <DialogTitle sx={{ fontWeight: 900, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           Manage Staff Roles
           <Button 
             variant="contained" 
@@ -634,7 +634,7 @@ export default function EmployeesPage() {
         sx={{ zIndex: 1400 }} // Ensure it's above the Management dialog
         PaperProps={{ sx: { borderRadius: 4, boxShadow: theme.shadows[10] } }}
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>
           {editingRoleId
             ? (roleForm.parentRole ? "Update Sub-Role" : "Update Staff Role")
             : (roleForm.parentRole ? "Create Sub-Role" : "Create New Staff Role")
@@ -673,7 +673,7 @@ export default function EmployeesPage() {
           </Box>
           <Box sx={{ px: 4, pb: 4, mt: -6, textAlign: 'center' }}>
             <Avatar src={viewingEmp?.profileImage} sx={{ width: 120, height: 120, mx: "auto", border: "5px solid #fff", boxShadow: theme.shadows[10], mb: 2 }} />
-            <Typography variant="h5" fontWeight={900}>{viewingEmp?.name}</Typography>
+            <Typography variant="h5" fontWeight={700}>{viewingEmp?.name}</Typography>
             <Typography variant="body1" color="primary" fontWeight={700} gutterBottom>{viewingEmp?.role?.title || viewingEmp?.position}</Typography>
             <Divider sx={{ my: 3 }} />
             <Grid container spacing={2} sx={{ textAlign: 'left' }}>

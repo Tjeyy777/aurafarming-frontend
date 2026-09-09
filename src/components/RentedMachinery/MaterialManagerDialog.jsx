@@ -53,7 +53,7 @@ export default function MaterialManagerDialog({ open, onClose }) {
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <CategoryIcon color="primary" />
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>Manage Materials</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>Manage Materials</Typography>
           </Stack>
           <IconButton onClick={onClose} size="small">
             <CloseIcon />

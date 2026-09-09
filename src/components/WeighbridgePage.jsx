@@ -43,6 +43,7 @@ import { useMemo, useState } from "react";
 import { useWeighbridge } from "../hooks/useWighbridge";
 import { useMaterials } from "../hooks/useMaterials";
 import ExportDialog, { ExportButton } from "./ExportDialog";
+import PageHeader from "./common/PageHeader";
 import { generateWeighbridgePDF } from "../utils/pdfGenerator";
 import { generateWeighbridgeExcel } from "../utils/excelGenerator";
 import { fetchAllWeighbridgeEntries } from "../utils/exportDataFetcher";
@@ -73,34 +74,25 @@ const toLocalISOString = (dateOrStr) => {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatCard({ label, value, icon: Icon, loading, accent }) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
   return (
-    <Card
-      sx={{
-        borderRadius: "16px",
-        border: `1px solid ${theme.palette.divider}`,
-        bgcolor: isDark ? "rgba(18,22,30,0.7)" : "#fff",
-        backdropFilter: "blur(12px)",
-        overflow: "visible",
-        position: "relative",
-        transition: "transform 0.18s, box-shadow 0.18s",
-        "&:hover": { transform: "translateY(-2px)", boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(0,0,0,0.10)" },
-      }}
-    >
-      <CardContent sx={{ p: "20px 22px !important" }}>
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+    <Card sx={{ height: "100%" }}>
+      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
           <Box>
-            <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", fontSize: "0.68rem" }}>
+            <Typography variant="overline" sx={{ color: "text.secondary", display: "block", lineHeight: 1.3 }}>
               {label}
             </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 900, mt: 0.5, letterSpacing: "-0.03em", color: accent || "text.primary" }}>
-              {loading ? <CircularProgress size={20} thickness={5} /> : value}
+            <Typography
+              sx={{
+                mt: 0.75, fontFamily: (t) => t.typography.fontFamilyMono,
+                fontVariantNumeric: "tabular-nums", fontSize: "1.5rem", fontWeight: 600,
+                letterSpacing: "-0.01em", lineHeight: 1.2, color: accent || "text.primary",
+              }}
+            >
+              {loading ? <CircularProgress size={18} /> : value}
             </Typography>
           </Box>
-          <Box sx={{ bgcolor: accent ? `${accent}18` : isDark ? "rgba(255,255,255,0.06)" : "#f4f6f8", borderRadius: "12px", p: 1.2, mt: 0.3 }}>
-            <Icon sx={{ fontSize: 22, color: accent || "text.secondary" }} />
-          </Box>
+          {Icon && <Icon sx={{ fontSize: 18, color: "text.disabled" }} />}
         </Stack>
       </CardContent>
     </Card>
@@ -122,7 +114,7 @@ function ColHeader({ cols, headers, showCheckbox, onSelectAll, isAllSelected, is
         />
       )}
       {headers.map((h) => (
-        <Typography key={h} variant="caption" sx={{ fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.07em", color: "text.secondary", fontSize: "0.68rem" }}>
+        <Typography key={h} variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "text.secondary", fontSize: "0.68rem" }}>
           {h}
         </Typography>
       ))}
@@ -141,7 +133,7 @@ function RowCell({ children, ...props }) {
 function ConfirmDialog({ open, title, onConfirm, onCancel, count = 1 }) {
   return (
     <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: "16px" } }}>
-      <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>{title}</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600, pb: 1 }}>{title}</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary">
             Are you sure you want to delete {count} selected {count > 1 ? "entries" : "entry"}? This action cannot be undone.
@@ -172,7 +164,7 @@ function CompleteDialog({ open, row, onConfirm, onCancel }) {
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: "16px" } }}>
-      <DialogTitle sx={{ fontWeight: 800 }}>Complete Entry — {row?.vehicleNumber}</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>Complete Entry — {row?.vehicleNumber}</DialogTitle>
       <DialogContent sx={{ pt: "12px !important" }}>
         <TextField
           label="Loaded Weight (kg)"
@@ -355,23 +347,21 @@ export default function WeighbridgePage() {
     <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: "1600px", mx: "auto", pb: 10, width: "100%" }}>
 
       {/* ── Header ── */}
-      <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} sx={{ mb: 3.5, gap: 2 }}>
-        <Box>
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
-            <Box sx={{ bgcolor: "primary.main", borderRadius: "10px", p: 0.9, display: "flex" }}><ScaleIcon sx={{ fontSize: 22, color: "#fff" }} /></Box>
-            <Typography variant="h5" sx={{ fontWeight: 900 }}>Weighbridge Control</Typography>
+      <PageHeader
+        icon={ScaleIcon}
+        title="Weighbridge"
+        subtitle="Live entries and historical logs"
+        actions={(
+          <Stack direction="row" spacing={1.5}>
+            <Paper variant="outlined" sx={{ px: 1.5, py: 0.25, display: "flex", alignItems: "center", width: 240, borderRadius: "8px" }}>
+              <SearchIcon sx={{ color: "text.disabled", fontSize: 18, mr: 1 }} />
+              <InputBase placeholder="Search" sx={{ flex: 1, fontSize: "0.875rem" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </Paper>
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={refetchToday}>Refresh</Button>
+            <ExportButton onClick={() => setExportOpen(true)} />
           </Stack>
-          <Typography variant="body2" sx={{ color: "text.secondary", pl: "46px" }}>Manage live entries and historical logs</Typography>
-        </Box>
-        <Stack direction="row" spacing={1.5}>
-          <Paper elevation={0} sx={{ px: 1.5, py: 0.5, display: "flex", alignItems: "center", width: 280, bgcolor: isDark ? "rgba(255,255,255,0.05)" : "#f4f6f8", borderRadius: "12px", border: `1px solid ${theme.palette.divider}` }}>
-            <SearchIcon sx={{ color: "text.disabled", fontSize: 19, mr: 1 }} />
-            <InputBase placeholder="Search..." sx={{ flex: 1, fontSize: "0.85rem" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-          </Paper>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={refetchToday} sx={{ borderRadius: "12px", fontWeight: 700 }}>Refresh</Button>
-          <ExportButton onClick={() => setExportOpen(true)} />
-        </Stack>
-      </Stack>
+        )}
+      />
 
       {/* Stat Cards */}
       {(() => {
@@ -389,18 +379,17 @@ export default function WeighbridgePage() {
         });
 
         const baseCards = [
-          { label: "Today's Weight", value: fmtWeight(productionSummary?.daily?.totalNetWeight), icon: ScaleIcon, accent: theme.palette.primary.main },
-          { label: "Today's Trips", value: productionSummary?.daily?.totalTrips ?? 0, icon: DirectionsCarIcon, accent: "#10b981" },
-          { label: "Daily Vehicles", value: uniqueVehiclesToday.size, icon: LocalShippingIcon, accent: "#06b6d4" },
-          { label: "Weekly Weight", value: fmtWeight(productionSummary?.weekly?.totalNetWeight), icon: TrendingUpIcon, accent: "#f59e0b" },
-          { label: "Monthly Weight", value: fmtWeight(productionSummary?.monthly?.totalNetWeight), icon: CalendarMonthIcon, accent: "#8b5cf6" },
+          { label: "Today's weight", value: fmtWeight(productionSummary?.daily?.totalNetWeight), icon: ScaleIcon },
+          { label: "Today's trips", value: productionSummary?.daily?.totalTrips ?? 0, icon: DirectionsCarIcon },
+          { label: "Daily vehicles", value: uniqueVehiclesToday.size, icon: LocalShippingIcon },
+          { label: "Weekly weight", value: fmtWeight(productionSummary?.weekly?.totalNetWeight), icon: TrendingUpIcon },
+          { label: "Monthly weight", value: fmtWeight(productionSummary?.monthly?.totalNetWeight), icon: CalendarMonthIcon },
         ];
 
         const materialCards = Object.keys(materialBreakdown).map(mat => ({
           label: mat.charAt(0).toUpperCase() + mat.slice(1),
           value: `${materialBreakdown[mat].trips} trips · ${materialBreakdown[mat].weight.toLocaleString()} kg`,
           icon: ScaleIcon,
-          accent: "#ec4899",
         }));
 
         const allCards = [...baseCards, ...materialCards];
@@ -429,9 +418,9 @@ export default function WeighbridgePage() {
                 <Paper elevation={4} sx={{ display: selectedIds.length > 0 ? "flex" : "none", alignItems: "center", justifyContent: "space-between", p: "12px 24px", mb: 2.5, borderRadius: "14px", bgcolor: isDark ? "rgba(211, 47, 47, 0.15)" : "#fff5f5", border: `1px solid ${theme.palette.error.light}` }}>
                     <Stack direction="row" alignItems="center" spacing={2}>
                         <Checkbox size="small" checked={selectedIds.length === filteredTodayEntries.length} indeterminate={selectedIds.length > 0 && selectedIds.length < filteredTodayEntries.length} onChange={handleSelectAll} color="error" />
-                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "error.main" }}>{selectedIds.length} items selected</Typography>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "error.main" }}>{selectedIds.length} items selected</Typography>
                     </Stack>
-                    <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={() => setConfirmDialog({ open: true, ids: selectedIds })} sx={{ fontWeight: 800, borderRadius: "10px" }}>Delete Selected</Button>
+                    <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={() => setConfirmDialog({ open: true, ids: selectedIds })} sx={{ fontWeight: 600, borderRadius: "10px" }}>Delete Selected</Button>
                 </Paper>
             </Fade>
 
@@ -499,7 +488,7 @@ export default function WeighbridgePage() {
                                   </TextField>
                                   <TextField size="small" type="datetime-local" value={editForm.entryTime} onChange={(e) => setEditForm((p) => ({ ...p, entryTime: e.target.value }))} />
                                   <TextField size="small" type="datetime-local" value={editForm.exitTime} onChange={(e) => setEditForm((p) => ({ ...p, exitTime: e.target.value }))} />
-                                  <RowCell sx={{ fontWeight: 800, color: "primary.main" }}>{fmtWeight(row.netWeight)}</RowCell>
+                                  <RowCell sx={{ fontWeight: 600, color: "primary.main" }}>{fmtWeight(row.netWeight)}</RowCell>
                                   <Chip size="small" label={row.status} color={row.status === "completed" ? "success" : "warning"} />
                                   <Stack direction="row" spacing={0.75}>
                                     <Button size="small" variant="contained" onClick={() => saveEdit(row._id)}>Save</Button>
@@ -508,14 +497,14 @@ export default function WeighbridgePage() {
                                 </>
                               ) : (
                                 <>
-                                  <RowCell sx={{ fontWeight: 800 }}>{row.vehicleNumber}</RowCell>
+                                  <RowCell sx={{ fontWeight: 600 }}>{row.vehicleNumber}</RowCell>
                                   <RowCell>{row.driverName || "—"}</RowCell>
                                   <RowCell>{fmtWeight(row.emptyWeight)}</RowCell>
                                   <RowCell>{fmtWeight(row.loadedWeight)}</RowCell>
                                   <RowCell>{row.materialId?.name || row.remarks || "—"}</RowCell>
                                   <RowCell sx={{ fontSize: "0.78rem" }}>{fmtDateTime(row.entryTime)}</RowCell>
                                   <RowCell sx={{ fontSize: "0.78rem" }}>{fmtDateTime(row.exitTime)}</RowCell>
-                                  <RowCell sx={{ fontWeight: 900, color: "primary.main" }}>{fmtWeight(row.netWeight)}</RowCell>
+                                  <RowCell sx={{ fontWeight: 600, color: "primary.main" }}>{fmtWeight(row.netWeight)}</RowCell>
                                   <Chip size="small" label={row.status} color={row.status === "completed" ? "success" : "warning"} />
                                   <Stack direction="row" spacing={0.5}>
                                     {row.status === "open" && (
@@ -545,7 +534,7 @@ export default function WeighbridgePage() {
         <Fade in>
           <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>Historical Summary</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Historical Summary</Typography>
                 <TextField
                   type="date"
                   size="small"
@@ -568,11 +557,11 @@ export default function WeighbridgePage() {
                   <ColHeader cols={HISTORY_COLS} headers={["Date", "Entries", "Completed", "Open", "Total Weight", "Action"]} />
                   {historySummary.map((item) => (
                     <Box key={item.date} sx={{ ...rowSx(false, false), gridTemplateColumns: HISTORY_COLS }}>
-                      <RowCell sx={{ fontWeight: 800 }}>{fmtDate(item.date)}</RowCell>
+                      <RowCell sx={{ fontWeight: 600 }}>{fmtDate(item.date)}</RowCell>
                       <RowCell>{item.totalEntries}</RowCell>
                       <RowCell color="success.main">{item.completedEntries}</RowCell>
                       <RowCell color="warning.main">{item.openEntries}</RowCell>
-                      <RowCell sx={{ fontWeight: 900, color: "primary.main" }}>{fmtWeight(item.totalNetWeight)}</RowCell>
+                      <RowCell sx={{ fontWeight: 600, color: "primary.main" }}>{fmtWeight(item.totalNetWeight)}</RowCell>
                       <Button variant="outlined" size="small" startIcon={<VisibilityIcon />} onClick={() => openDayView(item.date)}>View</Button>
                     </Box>
                   ))}
@@ -593,11 +582,11 @@ export default function WeighbridgePage() {
       <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: "20px", height: "85vh", backgroundImage: "none" } }}>
         <Box sx={{ p: 3, borderBottom: `1px solid ${theme.palette.divider}`, bgcolor: isDark ? "rgba(255,255,255,0.02)" : "#f8faff", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Stack direction="row" alignItems="center" spacing={2}>
-              <Box sx={{ p: 1.2, borderRadius: "12px", bgcolor: "primary.main", display: "flex", color: "#fff", boxShadow: "0 4px 14px rgba(0,0,0,0.15)" }}>
+              <Box sx={{ p: 1, borderRadius: "8px", bgcolor: "surface2", color: "text.secondary", display: "flex", border: (t) => `1px solid ${t.palette.divider}` }}>
                   <CalendarMonthIcon />
               </Box>
               <Box>
-                <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>Entries for {fmtDate(selectedDate)}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 600, letterSpacing: "-0.02em" }}>Entries for {fmtDate(selectedDate)}</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.5 }}>View detailed logs for the selected date.</Typography>
               </Box>
           </Stack>
@@ -622,7 +611,7 @@ export default function WeighbridgePage() {
                              <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: "success.main", color: "#fff" }}><DirectionsCarIcon /></Box>
                              <Box>
                                  <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>Total Trips</Typography>
-                                 <Typography variant="h5" sx={{ fontWeight: 900, color: "text.primary" }}>{selectedDaySummary?.totalTrips || 0}</Typography>
+                                 <Typography variant="h5" sx={{ fontWeight: 600, color: "text.primary" }}>{selectedDaySummary?.totalTrips || 0}</Typography>
                              </Box>
                          </CardContent>
                      </Card>
@@ -633,7 +622,7 @@ export default function WeighbridgePage() {
                              <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: "primary.main", color: "#fff" }}><ScaleIcon /></Box>
                              <Box>
                                  <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>Total Net Weight</Typography>
-                                 <Typography variant="h5" sx={{ fontWeight: 900, color: "primary.main" }}>{fmtWeight(selectedDaySummary?.totalNetWeight || 0)}</Typography>
+                                 <Typography variant="h5" sx={{ fontWeight: 600, color: "primary.main" }}>{fmtWeight(selectedDaySummary?.totalNetWeight || 0)}</Typography>
                              </Box>
                          </CardContent>
                      </Card>
@@ -646,13 +635,13 @@ export default function WeighbridgePage() {
                   <Stack spacing={0.5}>
                     {selectedDayEntries?.map((row, i) => (
                       <Box key={row._id} sx={{ ...rowSx(false, false), gridTemplateColumns: DAY_VIEW_COLS, py: 1.2, px: 2, borderRadius: "10px", border: "none", borderBottom: i < selectedDayEntries.length - 1 ? `1px solid ${theme.palette.divider}` : "none", bgcolor: "transparent", '&:hover': { bgcolor: isDark ? "rgba(255,255,255,0.04)" : "#f8faff" } }}>
-                        <RowCell sx={{ fontWeight: 800 }}>{row.vehicleNumber}</RowCell>
+                        <RowCell sx={{ fontWeight: 600 }}>{row.vehicleNumber}</RowCell>
                         <RowCell sx={{ color: row.driverName ? "text.primary" : "text.disabled" }}>{row.driverName || "Unknown"}</RowCell>
                         <RowCell>{fmtWeight(row.emptyWeight)}</RowCell>
                         <RowCell>{fmtWeight(row.loadedWeight)}</RowCell>
                         <RowCell sx={{ fontSize: "0.8rem", color: "text.secondary" }}>{fmtDateTime(row.entryTime)}</RowCell>
                         <RowCell sx={{ fontSize: "0.8rem", color: "text.secondary" }}>{fmtDateTime(row.exitTime)}</RowCell>
-                        <RowCell sx={{ fontWeight: 900, color: "primary.main", fontSize: "0.95rem" }}>{fmtWeight(row.netWeight)}</RowCell>
+                        <RowCell sx={{ fontWeight: 600, color: "primary.main", fontSize: "0.95rem" }}>{fmtWeight(row.netWeight)}</RowCell>
                         <Box>
                           <Chip size="small" label={row.status} sx={{ fontWeight: 700, borderRadius: "6px", textTransform: "uppercase", fontSize: "0.65rem", bgcolor: row.status === "completed" ? "success.main" : "warning.main", color: "#fff" }} />
                         </Box>

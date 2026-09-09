@@ -5,7 +5,8 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, AreaChart, Area, Legend, LabelList,
 } from 'recharts';
-import { SectionHeader, StatCard, ChartCard, ChartTooltip, EmptyState, MiniTable } from './DashboardKit';
+import PageHeader from '../common/PageHeader';
+import { StatCard, ChartCard, ChartTooltip, EmptyState, MiniTable } from './DashboardKit';
 import {
   CHART_COLORS, calcEntryCost, filterLogsByRange, buildTrend,
   fmtCurrency, fmtCompactCurrency, fmtNumber, fmtHours,
@@ -121,12 +122,11 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
 
   return (
     <Box>
-      <SectionHeader
+      <PageHeader
         icon={BusinessIcon}
-        color="#3b82f6"
-        title="Company Breakdown"
+        title="Company breakdown"
         subtitle="Rented machinery cost, hours and usage per owner company"
-        action={(
+        actions={(
           <TextField
             select
             size="small"
@@ -155,7 +155,7 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
               <StatCard
                 label={`${selectedName} — Cost`}
                 value={fmtCurrency(stats.totalCost)}
-                accent="#3b82f6"
+                accent={CHART_COLORS[0]}
                 sub={`${stats.share.toFixed(1)}% of all rented spend`}
               />
             </Grid>
@@ -166,7 +166,7 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
               <StatCard label="Entries / Trips" value={`${stats.entries} / ${stats.trips}`} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
-              <StatCard label="Effective Rate" value={`${fmtCurrency(stats.effRate)}/hr`} accent="#10b981" />
+              <StatCard label="Effective Rate" value={`${fmtCurrency(stats.effRate)}/hr`} accent="success.main" />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
               <StatCard label="Vehicles Used" value={stats.vehicles} />
@@ -207,7 +207,7 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
                       <XAxis dataKey="vehicle" tick={{ fill: axis, fontSize: 11 }} interval={0} angle={-35} textAnchor="end" height={78} />
                       <YAxis tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} width={62} />
                       <Tooltip content={<ChartTooltip valueFormatter={currencyTip} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                      <Bar dataKey="cost" name="Cost" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={52} />
+                      <Bar dataKey="cost" name="Cost" fill={CHART_COLORS[0]} radius={[6, 6, 0, 0]} maxBarSize={52} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -239,15 +239,15 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
                     <AreaChart data={trend} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
                       <defs>
                         <linearGradient id="cbCostFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                          <stop offset="5%" stopColor={CHART_COLORS[0]} stopOpacity={0.32} />
+                          <stop offset="95%" stopColor={CHART_COLORS[0]} stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: axis, fontSize: 12 }} minTickGap={16} />
                       <YAxis tick={{ fill: axis, fontSize: 12 }} tickFormatter={fmtCompactCurrency} width={62} />
                       <Tooltip content={<ChartTooltip valueFormatter={(v, k) => (k === 'cost' ? fmtCurrency(v) : fmtHours(v))} />} />
-                      <Area type="monotone" dataKey="cost" name="Cost" stroke="#3b82f6" fill="url(#cbCostFill)" strokeWidth={2.5} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
+                      <Area type="monotone" dataKey="cost" name="Cost" stroke={CHART_COLORS[0]} fill="url(#cbCostFill)" strokeWidth={2.5} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}
@@ -261,9 +261,9 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
               { key: 'vehicle', label: 'Vehicle', bold: true },
               { key: 'type', label: 'Type', color: 'text.secondary' },
               { key: 'owner', label: 'Owner', color: 'text.secondary' },
-              { key: 'hours', label: 'Hours', align: 'right', render: (r) => fmtNumber(r.hours) },
-              { key: 'trips', label: 'Trips', align: 'right' },
-              { key: 'cost', label: 'Cost', align: 'right', bold: true, color: '#10b981', render: (r) => fmtCurrency(r.cost) },
+              { key: 'hours', label: 'Hours', align: 'right', mono: true, render: (r) => fmtNumber(r.hours) },
+              { key: 'trips', label: 'Trips', align: 'right', mono: true },
+              { key: 'cost', label: 'Cost', align: 'right', bold: true, mono: true, color: 'success.main', render: (r) => fmtCurrency(r.cost) },
             ]}
             rows={byVehicle}
             emptyText="No vehicle activity for this company."

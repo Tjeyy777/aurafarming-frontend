@@ -212,7 +212,7 @@ export default function AttendancePage() {
         sx={{ mb: 4, gap: 2 }}
       >
         <Box>
-          <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: "-1px", color: "primary.main" }}>
+          <Typography variant="h4" fontWeight={700} sx={{ letterSpacing: "-1px", color: "primary.main" }}>
             Attendance Flow
           </Typography>
           <Typography variant="body2" color="text.secondary" fontWeight={500}>

@@ -51,7 +51,7 @@ export default function ExportDialog({ open, onClose, moduleName, onExportPDF, o
   return (
     <Dialog open={open} onClose={() => !loading && onClose()} fullWidth maxWidth="sm"
       PaperProps={{ sx: { borderRadius: 4 } }}>
-      <DialogTitle sx={{ fontWeight: 900, pb: 0.5 }}>
+      <DialogTitle sx={{ fontWeight: 700, pb: 0.5 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <DownloadIcon color="primary" />
           <span>Export {moduleName}</span>
@@ -109,7 +109,7 @@ export default function ExportDialog({ open, onClose, moduleName, onExportPDF, o
           <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>
             Date Range
           </Typography>
-          <Typography variant="body1" sx={{ fontWeight: 800, mt: 0.5, color: "primary.main" }}>
+          <Typography variant="body1" sx={{ fontWeight: 700, mt: 0.5, color: "primary.main" }}>
             {previewRange}
           </Typography>
           <Chip label={period === "daily" ? "Single Day" : period === "weekly" ? "Full Week (Mon–Sun)" : "Full Month"}

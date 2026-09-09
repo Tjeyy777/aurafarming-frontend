@@ -5,7 +5,8 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, AreaChart, Area, Legend, LabelList,
 } from 'recharts';
-import { SectionHeader, StatCard, ChartCard, ChartTooltip, EmptyState, MiniTable } from './DashboardKit';
+import PageHeader from '../common/PageHeader';
+import { StatCard, ChartCard, ChartTooltip, EmptyState, MiniTable } from './DashboardKit';
 import {
   CHART_COLORS, calcEntryCost, filterLogsByRange, buildTrend,
   normalizeDriver, driverKey, fmtCurrency, fmtNumber, fmtHours,
@@ -108,12 +109,11 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
 
   return (
     <Box>
-      <SectionHeader
+      <PageHeader
         icon={EngineeringIcon}
-        color="#f59e0b"
-        title="Driver Performance"
+        title="Driver performance"
         subtitle="Hours, trips and output per driver across rented machinery logs"
-        action={(
+        actions={(
           <TextField
             select
             size="small"
@@ -161,11 +161,11 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
                 minWidth={560}
                 columns={[
                   { key: 'name', label: 'Driver', bold: true },
-                  { key: 'hours', label: 'Hours', align: 'right', render: (r) => fmtNumber(r.hours) },
-                  { key: 'trips', label: 'Trips', align: 'right' },
-                  { key: 'daysCount', label: 'Days', align: 'right' },
-                  { key: 'vehiclesCount', label: 'Vehicles', align: 'right' },
-                  { key: 'cost', label: 'Cost Gen.', align: 'right', bold: true, color: '#10b981', render: (r) => fmtCurrency(r.cost) },
+                  { key: 'hours', label: 'Hours', align: 'right', mono: true, render: (r) => fmtNumber(r.hours) },
+                  { key: 'trips', label: 'Trips', align: 'right', mono: true },
+                  { key: 'daysCount', label: 'Days', align: 'right', mono: true },
+                  { key: 'vehiclesCount', label: 'Vehicles', align: 'right', mono: true },
+                  { key: 'cost', label: 'Cost Gen.', align: 'right', bold: true, mono: true, color: 'success.main', render: (r) => fmtCurrency(r.cost) },
                 ]}
                 rows={drivers.map((d) => ({
                   ...d,
@@ -181,7 +181,7 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
             <>
               <Grid container spacing={2.5}>
                 <Grid item xs={6} md={4} lg={2}>
-                  <StatCard label={`${selectedDriver.name} — Hours`} value={fmtNumber(selectedDriver.hours)} accent="#f59e0b" sub={`${fmtNumber(selectedDriver.workHours)} work + ${fmtNumber(selectedDriver.tripHours)} trip`} />
+                  <StatCard label={`${selectedDriver.name} — Hours`} value={fmtNumber(selectedDriver.hours)} accent={CHART_COLORS[1]} sub={`${fmtNumber(selectedDriver.workHours)} work + ${fmtNumber(selectedDriver.tripHours)} trip`} />
                 </Grid>
                 <Grid item xs={6} md={4} lg={2}>
                   <StatCard label="Trips" value={selectedDriver.trips} sub={`${selectedDriver.entries} work entries`} />
@@ -190,7 +190,7 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
                   <StatCard label="Days Worked" value={selectedDriver.daysCount} sub={`${fmtNumber(selectedDriver.avgPerDay)} hrs/day avg`} />
                 </Grid>
                 <Grid item xs={6} md={4} lg={2}>
-                  <StatCard label="Cost Generated" value={fmtCurrency(selectedDriver.cost)} accent="#10b981" />
+                  <StatCard label="Cost Generated" value={fmtCurrency(selectedDriver.cost)} accent="success.main" />
                 </Grid>
                 <Grid item xs={6} md={4} lg={2}>
                   <StatCard label="Vehicles Driven" value={selectedDriver.vehiclesCount} />
@@ -210,7 +210,7 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
                           <XAxis dataKey="name" tick={{ fill: axis, fontSize: 11 }} interval={0} angle={-35} textAnchor="end" height={78} />
                           <YAxis tick={{ fill: axis, fontSize: 12 }} width={48} />
                           <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                          <Bar dataKey="hours" name="Hours" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={52} />
+                          <Bar dataKey="hours" name="Hours" fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} maxBarSize={52} />
                         </BarChart>
                       </ResponsiveContainer>
                     )}
@@ -240,15 +240,15 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
                         <AreaChart data={trend} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
                           <defs>
                             <linearGradient id="dpHoursFill" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35} />
-                              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                              <stop offset="5%" stopColor={CHART_COLORS[1]} stopOpacity={0.32} />
+                              <stop offset="95%" stopColor={CHART_COLORS[1]} stopOpacity={0} />
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
                           <XAxis dataKey="label" tick={{ fill: axis, fontSize: 12 }} minTickGap={16} />
                           <YAxis tick={{ fill: axis, fontSize: 12 }} width={48} />
                           <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} />
-                          <Area type="monotone" dataKey="hours" name="Hours" stroke="#f59e0b" fill="url(#dpHoursFill)" strokeWidth={2.5} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
+                          <Area type="monotone" dataKey="hours" name="Hours" stroke={CHART_COLORS[1]} fill="url(#dpHoursFill)" strokeWidth={2.5} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
                         </AreaChart>
                       </ResponsiveContainer>
                     )}
@@ -263,7 +263,7 @@ export default function DriverPerformance({ logs, startDate, endDate }) {
                           <XAxis dataKey="name" tick={{ fill: axis, fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={70} />
                           <YAxis tick={{ fill: axis, fontSize: 12 }} width={48} />
                           <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
-                          <Bar dataKey="value" name="Hours" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={64} />
+                          <Bar dataKey="value" name="Hours" fill={CHART_COLORS[3]} radius={[6, 6, 0, 0]} maxBarSize={64} />
                         </BarChart>
                       </ResponsiveContainer>
                     </ChartCard>

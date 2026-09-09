@@ -91,7 +91,7 @@ export default function BulkEditDialog({
       maxWidth="sm"
       PaperProps={{ sx: { borderRadius: 4, backgroundImage: "none" } }}
     >
-      <DialogTitle sx={{ fontWeight: 900, fontSize: "1.4rem", pb: 1 }}>
+      <DialogTitle sx={{ fontWeight: 700, fontSize: "1.4rem", pb: 1 }}>
         Bulk Edit Attendance
       </DialogTitle>
 
@@ -105,7 +105,7 @@ export default function BulkEditDialog({
         />
 
         {/* Role filter inside dialog */}
-        <Typography variant="overline" fontWeight={800} color="text.secondary" sx={{ mb: 1, display: "block" }}>
+        <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: "block" }}>
           Target Group (Optional)
         </Typography>
         <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
@@ -144,7 +144,7 @@ export default function BulkEditDialog({
         <Divider sx={{ mb: 2.5 }} />
 
         {/* Values to apply */}
-        <Typography variant="overline" fontWeight={800} color="text.secondary" sx={{ mb: 1, display: "block" }}>
+        <Typography variant="overline" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: "block" }}>
           Values to Apply
         </Typography>
 
@@ -195,7 +195,7 @@ export default function BulkEditDialog({
               <Typography variant="body2" color="text.secondary">
                 Each employee will receive:
               </Typography>
-              <Typography variant="h6" fontWeight={900} color="primary.main">
+              <Typography variant="h6" fontWeight={700} color="primary.main">
                 ₹{(Number(extraHours) * Number(perHourRate)).toLocaleString("en-IN")} overtime pay
               </Typography>
               <Typography variant="caption" color="text.secondary">

@@ -51,7 +51,7 @@ export default function PartyManagerDialog({ open, onClose }) {
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <BusinessIcon color="primary" />
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>Manage Companies</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>Manage Companies</Typography>
           </Stack>
           <IconButton onClick={onClose} size="small">
             <CloseIcon />
