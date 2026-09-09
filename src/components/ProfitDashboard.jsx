@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   Box, Typography, Card, CardContent, Grid, TextField, Stack,
-  CircularProgress, useTheme, Paper
+  CircularProgress, useTheme, Paper, Divider
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -11,6 +11,9 @@ import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import ScaleIcon from "@mui/icons-material/Scale";
 import { fetchAllWeighbridgeEntries, fetchAllRentedLogs } from '../utils/exportDataFetcher';
 import { useMaterials } from '../hooks/useMaterials';
+import { useParties } from '../hooks/useParties';
+import CompanyBreakdown from './dashboard/CompanyBreakdown';
+import DriverPerformance from './dashboard/DriverPerformance';
 
 const fmtCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val || 0);
 
@@ -74,6 +77,7 @@ export default function ProfitDashboard() {
   });
 
   const { isLoading: loadingMat } = useMaterials();
+  const { data: parties = [] } = useParties();
 
   const analytics = useMemo(() => {
     if (!weighbridgeData || !rentedLogsData) return null;
@@ -253,6 +257,12 @@ export default function ProfitDashboard() {
           </Card>
         </Grid>
       </Grid>
+
+      <Divider sx={{ my: 6 }} />
+      <CompanyBreakdown logs={rentedLogsData || []} parties={parties} startDate={startDate} endDate={endDate} />
+
+      <Divider sx={{ my: 6 }} />
+      <DriverPerformance logs={rentedLogsData || []} startDate={startDate} endDate={endDate} />
     </Box>
   );
 }

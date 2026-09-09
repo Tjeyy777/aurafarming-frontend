@@ -1,0 +1,277 @@
+import React, { useMemo, useState } from 'react';
+import { Box, Grid, MenuItem, TextField, Typography, Stack, useTheme } from '@mui/material';
+import EngineeringIcon from '@mui/icons-material/Engineering';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell, AreaChart, Area, Legend,
+} from 'recharts';
+import { SectionHeader, StatCard, ChartCard, ChartTooltip, EmptyState, MiniTable } from './DashboardKit';
+import {
+  CHART_COLORS, calcEntryCost, filterLogsByRange, buildTrend,
+  normalizeDriver, driverKey, fmtCurrency, fmtNumber, fmtHours,
+} from './dashboardUtils';
+
+export default function DriverPerformance({ logs, startDate, endDate }) {
+  const theme = useTheme();
+  const axis = theme.palette.text.secondary;
+  const gridStroke = theme.palette.divider;
+  const [selected, setSelected] = useState('');
+
+  const periodLogs = useMemo(
+    () => filterLogsByRange(logs, startDate, endDate).filter((l) => normalizeDriver(l.driverName)),
+    [logs, startDate, endDate],
+  );
+
+  // One row per distinct (normalised) driver name.
+  const drivers = useMemo(() => {
+    const map = new Map();
+    periodLogs.forEach((l) => {
+      const key = driverKey(l.driverName);
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          name: normalizeDriver(l.driverName),
+          hours: 0, workHours: 0, tripHours: 0, trips: 0, entries: 0, cost: 0,
+          days: new Set(), vehicles: new Set(), companies: new Set(),
+        });
+      }
+      const d = map.get(key);
+      const h = Number(l.totalHours || 0);
+      d.hours += h;
+      if (l.isTrip) { d.tripHours += h; d.trips += 1; } else { d.workHours += h; d.entries += 1; }
+      d.cost += calcEntryCost(l);
+      if (l.date) d.days.add(new Date(l.date).toISOString().split('T')[0]);
+      if (l.vehicleId?._id) d.vehicles.add(l.vehicleId._id);
+      if (l.companyId?._id) d.companies.add(l.companyId._id);
+    });
+    return [...map.values()]
+      .map((d) => ({
+        ...d,
+        daysCount: d.days.size,
+        vehiclesCount: d.vehicles.size,
+        companiesCount: d.companies.size,
+        avgPerDay: d.days.size > 0 ? d.hours / d.days.size : 0,
+      }))
+      .sort((a, b) => b.hours - a.hours);
+  }, [periodLogs]);
+
+  const selectedDriver = useMemo(
+    () => drivers.find((d) => d.key === selected) || null,
+    [drivers, selected],
+  );
+
+  const driverLogs = useMemo(
+    () => (selectedDriver ? periodLogs.filter((l) => driverKey(l.driverName) === selectedDriver.key) : []),
+    [periodLogs, selectedDriver],
+  );
+
+  const byVehicle = useMemo(() => {
+    const map = new Map();
+    driverLogs.forEach((l) => {
+      const key = l.vehicleId?.vehicleNumber || 'Unknown';
+      if (!map.has(key)) map.set(key, { name: key, hours: 0, cost: 0, trips: 0 });
+      const row = map.get(key);
+      row.hours += Number(l.totalHours || 0);
+      row.cost += calcEntryCost(l);
+      if (l.isTrip) row.trips += 1;
+    });
+    return [...map.values()].sort((a, b) => b.hours - a.hours);
+  }, [driverLogs]);
+
+  const byCompany = useMemo(() => {
+    const map = new Map();
+    driverLogs.forEach((l) => {
+      const key = l.companyId?.name || 'Unassigned';
+      if (!map.has(key)) map.set(key, { name: key, value: 0 });
+      map.get(key).value += Number(l.totalHours || 0);
+    });
+    return [...map.values()].filter((r) => r.value > 0).sort((a, b) => b.value - a.value);
+  }, [driverLogs]);
+
+  const byMaterial = useMemo(() => {
+    const map = new Map();
+    driverLogs.forEach((l) => {
+      const key = l.materialId?.name || 'Unspecified';
+      if (!map.has(key)) map.set(key, { name: key, value: 0 });
+      map.get(key).value += Number(l.totalHours || 0);
+    });
+    return [...map.values()].filter((r) => r.value > 0).sort((a, b) => b.value - a.value);
+  }, [driverLogs]);
+
+  const trend = useMemo(
+    () => buildTrend(driverLogs, startDate, endDate),
+    [driverLogs, startDate, endDate],
+  );
+
+  const topByHours = useMemo(() => drivers.slice(0, 10), [drivers]);
+
+  return (
+    <Box>
+      <SectionHeader
+        icon={EngineeringIcon}
+        color="#f59e0b"
+        title="Driver Performance"
+        subtitle="Hours, trips and output per driver across rented machinery logs"
+        action={(
+          <TextField
+            select
+            size="small"
+            label="Driver"
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            sx={{ minWidth: 240 }}
+            disabled={drivers.length === 0}
+          >
+            <MenuItem value="">— Select a driver —</MenuItem>
+            {drivers.map((d) => (
+              <MenuItem key={d.key} value={d.key}>{d.name}</MenuItem>
+            ))}
+          </TextField>
+        )}
+      />
+
+      {drivers.length === 0 ? (
+        <Typography sx={{ color: 'text.secondary', textAlign: 'center', py: 6 }}>
+          No driver activity in this period.
+        </Typography>
+      ) : (
+        <Stack spacing={3}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={5}>
+              <ChartCard title="Top Drivers by Hours" height={Math.max(300, topByHours.length * 40)}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topByHours} layout="vertical" margin={{ left: 10, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
+                    <XAxis type="number" tick={{ fill: axis, fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" width={100} tick={{ fill: axis, fontSize: 11 }} />
+                    <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
+                    <Bar dataKey="hours" name="Hours" radius={[0, 6, 6, 0]}>
+                      {topByHours.map((e, i) => (
+                        <Cell key={e.key} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </Grid>
+            <Grid item xs={12} md={7}>
+              <MiniTable
+                minWidth={560}
+                columns={[
+                  { key: 'name', label: 'Driver', bold: true },
+                  { key: 'hours', label: 'Hours', align: 'right', render: (r) => fmtNumber(r.hours) },
+                  { key: 'trips', label: 'Trips', align: 'right' },
+                  { key: 'daysCount', label: 'Days', align: 'right' },
+                  { key: 'vehiclesCount', label: 'Vehicles', align: 'right' },
+                  { key: 'cost', label: 'Cost Gen.', align: 'right', bold: true, color: '#10b981', render: (r) => fmtCurrency(r.cost) },
+                ]}
+                rows={drivers.map((d) => ({
+                  ...d,
+                  id: d.key,
+                  selected: d.key === selected,
+                  onClick: () => setSelected(d.key === selected ? '' : d.key),
+                }))}
+              />
+            </Grid>
+          </Grid>
+
+          {selectedDriver && (
+            <>
+              <Grid container spacing={2}>
+                <Grid item xs={6} md={3}>
+                  <StatCard label={`${selectedDriver.name} — Hours`} value={fmtNumber(selectedDriver.hours)} accent="#f59e0b" sub={`${fmtNumber(selectedDriver.workHours)} work + ${fmtNumber(selectedDriver.tripHours)} trip`} />
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <StatCard label="Trips" value={selectedDriver.trips} sub={`${selectedDriver.entries} work entries`} />
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <StatCard label="Days Worked" value={selectedDriver.daysCount} sub={`${fmtNumber(selectedDriver.avgPerDay)} hrs/day avg`} />
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <StatCard label="Cost Generated" value={fmtCurrency(selectedDriver.cost)} accent="#10b981" />
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <StatCard label="Vehicles Driven" value={selectedDriver.vehiclesCount} />
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <StatCard label="Companies Worked For" value={selectedDriver.companiesCount} />
+                </Grid>
+              </Grid>
+
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <ChartCard title="Hours by Vehicle">
+                    {byVehicle.length === 0 ? <EmptyState /> : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={byVehicle.slice(0, 10)} margin={{ left: 0, right: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                          <XAxis dataKey="name" tick={{ fill: axis, fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
+                          <YAxis tick={{ fill: axis, fontSize: 11 }} />
+                          <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
+                          <Bar dataKey="hours" name="Hours" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </ChartCard>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <ChartCard title="Hours by Company">
+                    {byCompany.length === 0 ? <EmptyState /> : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={byCompany} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={52} paddingAngle={2}>
+                            {byCompany.map((e, i) => (
+                              <Cell key={e.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </ChartCard>
+                </Grid>
+                <Grid item xs={12}>
+                  <ChartCard title={`Activity Trend — ${selectedDriver.name}`}>
+                    {trend.length === 0 ? <EmptyState /> : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={trend} margin={{ left: 0, right: 10 }}>
+                          <defs>
+                            <linearGradient id="dpHoursFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35} />
+                              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                          <XAxis dataKey="label" tick={{ fill: axis, fontSize: 11 }} />
+                          <YAxis tick={{ fill: axis, fontSize: 11 }} />
+                          <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} />
+                          <Area type="monotone" dataKey="hours" name="Hours" stroke="#f59e0b" fill="url(#dpHoursFill)" strokeWidth={2} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                  </ChartCard>
+                </Grid>
+                {byMaterial.length > 0 && (
+                  <Grid item xs={12} md={6}>
+                    <ChartCard title="Hours by Material">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={byMaterial} margin={{ left: 0, right: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                          <XAxis dataKey="name" tick={{ fill: axis, fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
+                          <YAxis tick={{ fill: axis, fontSize: 11 }} />
+                          <Tooltip content={<ChartTooltip valueFormatter={(v) => fmtHours(v)} />} cursor={{ fill: 'rgba(128,128,128,0.08)' }} />
+                          <Bar dataKey="value" name="Hours" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </ChartCard>
+                  </Grid>
+                )}
+              </Grid>
+            </>
+          )}
+        </Stack>
+      )}
+    </Box>
+  );
+}
