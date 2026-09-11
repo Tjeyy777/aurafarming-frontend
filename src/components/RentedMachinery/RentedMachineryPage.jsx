@@ -40,6 +40,11 @@ import ExportDialog, { ExportButton } from '../ExportDialog';
 
 const fmtDate = (v) => (!v ? '—' : new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }));
 const fmtNumber = (v) => (v == null ? '—' : Number(v).toLocaleString());
+// Cost for a single log entry, computed fresh from hours × hourly rate
+// (matches pdfGenerator.js / excelGenerator.js calcEntryCost) rather than
+// trusting the stored `cost` field, since trip entries were being saved
+// with cost = 0 even though they consumed billable hours on the vehicle.
+const calcCost = (log) => Number(log?.totalHours || 0) * Number(log?.hourlyRate || 0);
 
 // ─── Sub Components ──────────────────────────────────────────────────────────
 
@@ -663,7 +668,7 @@ export default function RentedMachineryPage() {
                               onChange={(e) => setEditForm(p => ({ ...p, driverName: e.target.value }))}
                             />
                             <RowCell sx={{ fontWeight: 700, color: 'primary.main' }}>{fmtNumber(log.totalHours)}</RowCell>
-                            <RowCell sx={{ fontWeight: 700, color: 'success.main' }}>₹{fmtNumber(log.cost)}</RowCell>
+                            <RowCell sx={{ fontWeight: 700, color: 'success.main' }}>₹{fmtNumber(calcCost(log))}</RowCell>
                             <TextField
                               size="small"
                               value={editForm.remarks}
@@ -684,7 +689,7 @@ export default function RentedMachineryPage() {
                             <RowCell>{fmtNumber(log.closingMeter)}</RowCell>
                             <RowCell>{log.driverName || '—'}</RowCell>
                             <RowCell sx={{ fontWeight: 700, color: 'primary.main' }}>{fmtNumber(log.totalHours)}</RowCell>
-                            <RowCell sx={{ fontWeight: 700, color: 'success.main' }}>₹{fmtNumber(log.cost)}</RowCell>
+                            <RowCell sx={{ fontWeight: 700, color: 'success.main' }}>₹{fmtNumber(calcCost(log))}</RowCell>
                             <RowCell>{log.remarks || '—'}</RowCell>
                             <Stack direction="row" spacing={0.5}>
                               <IconButton
@@ -776,7 +781,7 @@ export default function RentedMachineryPage() {
                                       onChange={(e) => setEditForm(p => ({ ...p, tripPurpose: e.target.value }))}
                                     />
                                     <RowCell>{fmtNumber(child.totalHours)}</RowCell>
-                                    <RowCell>—</RowCell>
+                                    <RowCell sx={{ fontWeight: 700, color: 'success.main' }}>₹{fmtNumber(calcCost(child))}</RowCell>
                                     <TextField
                                       size="small"
                                       value={editForm.remarks}
@@ -799,7 +804,7 @@ export default function RentedMachineryPage() {
                                       {child.tripPurpose || 'External work'}
                                     </RowCell>
                                     <RowCell sx={{ fontWeight: 700, color: 'warning.main' }}>{fmtNumber(child.totalHours)}</RowCell>
-                                    <RowCell>—</RowCell>
+                                    <RowCell sx={{ fontWeight: 700, color: 'success.main' }}>₹{fmtNumber(calcCost(child))}</RowCell>
                                     <RowCell>{child.remarks || '—'}</RowCell>
                                     <Stack direction="row" spacing={0.5}>
                                       <IconButton
