@@ -453,6 +453,11 @@ export default function WeighbridgePage() {
                       <Box /><Box /><Box /><Box />
                       <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddRow} sx={{ fontWeight: 700, borderRadius: "10px", height: 40, alignSelf: "center" }}>Add</Button>
                     </Box>
+                    {newRowError && (
+                      <Alert severity="error" sx={{ mb: 1.5, borderRadius: "10px" }} onClose={() => setNewRowError("")}>
+                        {newRowError}
+                      </Alert>
+                    )}
 
                     <ColHeader cols={TODAY_COLS} headers={["Vehicle", "Driver", "Empty", "Loaded", "Material", "Entry Time", "Exit Time", "Net Weight", "Status", "Actions"]} showCheckbox isAllSelected={selectedIds.length > 0 && selectedIds.length === filteredTodayEntries.length} isIndeterminate={selectedIds.length > 0 && selectedIds.length < filteredTodayEntries.length} onSelectAll={handleSelectAll} />
 
