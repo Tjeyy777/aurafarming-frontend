@@ -7,6 +7,12 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-dig
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—";
 const fmtHours = (val) => Number(Number(val || 0).toFixed(3));
 
+// Cost for a single log entry, computed fresh from hours × hourly rate
+// (see pdfGenerator.js calcEntryCost) rather than trusting the stored `cost`
+// field, because trip entries were being saved with cost = 0 even though
+// they consumed billable hours on the vehicle.
+const calcEntryCost = (l) => Number(l.totalHours || 0) * Number(l.hourlyRate || 0);
+
 // ─── Helper: Create styled workbook with a sheet ─────────────────────────────
 function createWorkbook() {
   return XLSX.utils.book_new();
@@ -211,7 +217,7 @@ export function generateRentedLogsExcel({ logs = [], period, customDate, company
 
   const mainEntries = sortedLogs.filter((l) => !l.isTrip);
   const tripEntries = sortedLogs.filter((l) => l.isTrip);
-  const totalCost = mainEntries.reduce((s, l) => s + Number(l.cost || 0), 0);
+  const totalCost = sortedLogs.reduce((s, l) => s + calcEntryCost(l), 0);
   const totalHours = fmtHours(mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0));
   const totalTripHours = fmtHours(tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0));
 
@@ -230,7 +236,7 @@ export function generateRentedLogsExcel({ logs = [], period, customDate, company
     i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
     l.companyId?.name || "—", l.vehicleId?.vehicleType || "—", l.driverName || "—",
     l.openingMeter ?? "—", l.closingMeter ?? "—", fmtHours(l.totalHours),
-    l.hourlyRate || 0, l.cost || 0,
+    l.hourlyRate || 0, calcEntryCost(l),
     l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—",
   ]), ["#", "Date", "Vehicle", "Company", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"]);
 
@@ -331,7 +337,7 @@ export function generateFullExcel({
       i + 1, fmtDate(l.date), l.vehicleId?.vehicleNumber || "—",
       l.vehicleId?.vehicleType || "—", l.driverName || "—",
       l.openingMeter ?? "—", l.closingMeter ?? "—", fmtHours(l.totalHours),
-      l.hourlyRate || 0, l.cost || 0,
+      l.hourlyRate || 0, calcEntryCost(l),
       l.isTrip ? "Yes" : "No", l.remarks || l.tripPurpose || "—",
     ]), ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr (₹)", "Cost (₹)", "Trip?", "Remarks"]);
   }
