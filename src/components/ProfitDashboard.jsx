@@ -6,7 +6,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, Legend,
 } from 'recharts';
-import { fetchAllWeighbridgeEntries, fetchAllRentedLogs } from '../utils/exportDataFetcher';
+import { fetchAllWeighbridgeEntries, fetchAllRentedLogs, fetchAllAttendanceForRange } from '../utils/exportDataFetcher';
 import { generateAnalyticsPDF } from '../utils/pdfGenerator';
 import { useMaterials } from '../hooks/useMaterials';
 import { useParties } from '../hooks/useParties';
@@ -16,9 +16,9 @@ import StatCard from './common/StatCard';
 import PeriodPicker from './dashboard/PeriodPicker';
 import { ChartCard, ChartWithTable, TrendChart, HBarChart, MiniTable } from './dashboard/DashboardKit';
 import {
-  buildRevenueCostTrend, filterLogsByRange, topNplusOther, fmtCurrency, fmtCompactCurrency,
+  buildRevenueCostTrend, filterLogsByRange, topNplusOther, fmtCurrency, fmtCompactCurrency, fmtHours,
 } from './dashboard/dashboardUtils';
-import { profitSummary, companyRows, driverRows, utilisationGrid } from './dashboard/analyticsModel';
+import { profitSummary, companyRows, driverRows, utilisationGrid, employeeCostSummary } from './dashboard/analyticsModel';
 import CompanyBreakdown from './dashboard/CompanyBreakdown';
 import DriverPerformance from './dashboard/DriverPerformance';
 
@@ -74,6 +74,16 @@ export default function ProfitDashboard() {
   });
   const { isLoading: loadingMat } = useMaterials();
   const { data: parties = [] } = useParties();
+  const { data: attendanceData } = useQuery({
+    queryKey: ['attendanceRange', startDate, endDate],
+    queryFn: () => fetchAllAttendanceForRange(startDate, endDate),
+    staleTime: 5 * 60 * 1000, placeholderData: keepPreviousData,
+  });
+
+  const employeeCost = useMemo(
+    () => (attendanceData ? employeeCostSummary(attendanceData) : null),
+    [attendanceData],
+  );
 
   const summary = useMemo(
     () => (weighbridgeData && rentedLogsData ? profitSummary(weighbridgeData, rentedLogsData, startDate, endDate) : null),
@@ -112,7 +122,7 @@ export default function ProfitDashboard() {
       generateAnalyticsPDF({
         periodLabel: periodLbl,
         dateRangeStr: rangeLabel(startDate, endDate),
-        summary, companies, drivers, utilisation, chartImage,
+        summary, companies, drivers, utilisation, chartImage, employeeCost,
       });
     } catch (e) {
       console.error('Analytics PDF failed', e);
@@ -120,7 +130,7 @@ export default function ProfitDashboard() {
     } finally {
       setExporting(false);
     }
-  }, [summary, rcTrend, rentedLogsData, startDate, endDate, periodLbl]);
+  }, [summary, rcTrend, rentedLogsData, startDate, endDate, periodLbl, employeeCost]);
 
   const isLoading = (loadingWb && !weighbridgeData) || (loadingRented && !rentedLogsData) || loadingMat;
   if (isLoading) {
@@ -180,6 +190,19 @@ export default function ProfitDashboard() {
           />
         </Grid>
       </Grid>
+
+      {employeeCost && employeeCost.employees.length > 0 && (
+        <Grid container spacing={2.5} sx={{ mb: 4 }}>
+          <Grid item xs={12} sm={6} lg={3}>
+            <StatCard
+              label="Employee cost (wages)"
+              value={fmtCurrency(employeeCost.totalWages)}
+              accent="text.secondary"
+              sub={`${employeeCost.presentDays} present-days · ${fmtHours(employeeCost.totalOT)} OT · not in Net Profit above`}
+            />
+          </Grid>
+        </Grid>
+      )}
 
       {!isDayView && (
         <Box sx={{ mb: 4 }}>

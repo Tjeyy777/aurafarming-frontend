@@ -1152,6 +1152,7 @@ export function generateAnalyticsPDF({
   utilisation = null,      // { cols:[{label,weekKey}], rows:[{key,label}], get(row,col) }
   chartImage = null,       // PNG data URL
   companyName = null,
+  employeeCost = null,     // { totalWages, presentDays, absentDays, totalOT, employees:[{name,presentDays,absentDays,otHours,wages}] }
 }) {
   const H = (v) => `${Number(v || 0).toFixed(1)} h`;
   const PCT = (part, whole) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—");
@@ -1194,6 +1195,23 @@ export function generateAnalyticsPDF({
       doc.addImage(chartImage, "PNG", 14, y, imgW, imgH);
       y += imgH + 8;
     } catch { /* image capture failed — carry on without it */ }
+  }
+
+  // 1c — Employee wage cost (informational — not folded into Net Profit above)
+  if (employeeCost && employeeCost.employees?.length) {
+    y = drawSectionTitle(doc, "Employee Cost (Wages)", y, "not included in Net Profit above");
+    y = drawSummaryCards(doc, [
+      { label: "Total Wages", value: INR(employeeCost.totalWages) },
+      { label: "Present Days", value: employeeCost.presentDays },
+      { label: "Absent Days", value: employeeCost.absentDays },
+      { label: "OT Hours", value: H(employeeCost.totalOT) },
+    ], y);
+    y = drawTable(
+      doc,
+      ["Employee", "Present Days", "Absent Days", "OT Hours", "Total Wages"],
+      employeeCost.employees.map((e) => [e.name, e.presentDays, e.absentDays, H(e.otHours), INR(e.wages)]),
+      y,
+    );
   }
 
   // 2 — Revenue by material

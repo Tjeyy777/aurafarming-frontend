@@ -125,6 +125,39 @@ export function companyDetail(logsForCompany, startDate, endDate) {
   };
 }
 
+// ── Employee wage cost (informational — not folded into Net Profit) ────────
+export function employeeCostSummary(attendanceRecords) {
+  let totalWages = 0; let presentDays = 0; let absentDays = 0; let totalOT = 0;
+  const byEmployee = new Map();
+
+  (attendanceRecords || []).forEach((a) => {
+    const dailyWage = Number(a.employeeId?.dailyWage || 0);
+    const otHours = Number(a.overtimeHour || 0);
+    const otRate = Number(a.perHourRate || 0);
+    const otPay = a.status === 'present' ? otHours * otRate : 0;
+    const basePay = a.status === 'present' ? dailyWage : 0;
+    const pay = Number(a.wage || (basePay + otPay));
+
+    totalWages += pay;
+    totalOT += otHours;
+    if (a.status === 'present') presentDays += 1; else absentDays += 1;
+
+    const key = a.employeeId?._id || a.employeeId || 'unknown';
+    const row = byEmployee.get(key) || {
+      name: a.employeeId?.name || 'Unknown', presentDays: 0, absentDays: 0, otHours: 0, wages: 0,
+    };
+    if (a.status === 'present') row.presentDays += 1; else row.absentDays += 1;
+    row.otHours += otHours;
+    row.wages += pay;
+    byEmployee.set(key, row);
+  });
+
+  return {
+    totalWages, presentDays, absentDays, totalOT,
+    employees: [...byEmployee.values()].sort((a, b) => b.wages - a.wages),
+  };
+}
+
 // ── Driver stats ───────────────────────────────────────────────────────────
 export function driverRows(rentedLogs, startDate, endDate) {
   const periodLogs = filterLogsByRange(rentedLogs, startDate, endDate)
