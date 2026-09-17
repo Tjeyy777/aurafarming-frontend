@@ -135,7 +135,6 @@ export const buildRevenueCostTrend = (weighbridge, rentedLogs, startDate, endDat
     touch(bucketKeyOf(d, bucket)).revenue += (e.netWeight / 1000) * e.materialRate;
   });
   (rentedLogs || []).forEach((l) => {
-    if (l.isTrip) return;
     const d = new Date(l.date);
     if (d < start || d > end) return;
     touch(bucketKeyOf(l.date, bucket)).cost += calcEntryCost(l);

@@ -16,6 +16,9 @@ import {
   useUpdateRentedVehicle,
   useDeleteRentedVehicle,
 } from '/src/hooks/useRentedMachinery';
+import { generateRentedVehiclesPDF } from '../../utils/pdfGenerator';
+import { generateRentedVehiclesExcel } from '../../utils/excelGenerator';
+import ExportDialog, { ExportButton } from '../ExportDialog';
 
 const VEHICLE_TYPES = [
   { value: 'excavator', label: 'Excavator' },
@@ -31,6 +34,7 @@ export default function RentedVehicleMasterPage() {
   const { enqueueSnackbar } = useSnackbar();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
   const [form, setForm] = useState({
     vehicleNumber: '',
@@ -135,14 +139,17 @@ export default function RentedVehicleMasterPage() {
             Manage rented vehicle database
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => openDialog()}
-          sx={{ fontWeight: 700, borderRadius: 2 }}
-        >
-          Add Vehicle
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <ExportButton onClick={() => setExportOpen(true)} />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => openDialog()}
+            sx={{ fontWeight: 700, borderRadius: 2 }}
+          >
+            Add Vehicle
+          </Button>
+        </Stack>
       </Box>
 
       {/* FIX: Vehicle Grid — Grid v2 syntax */}
@@ -290,6 +297,18 @@ export default function RentedVehicleMasterPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        moduleName="RentedVehicleMaster"
+        onExportPDF={async (period, customDate) => {
+          generateRentedVehiclesPDF({ vehicles, period, customDate });
+        }}
+        onExportExcel={async (period, customDate) => {
+          generateRentedVehiclesExcel({ vehicles, period, customDate });
+        }}
+      />
     </Box>
   );
 }

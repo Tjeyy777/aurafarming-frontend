@@ -83,6 +83,14 @@ export default function ProfitDashboard() {
     () => buildRevenueCostTrend(weighbridgeData, rentedLogsData, startDate, endDate),
     [weighbridgeData, rentedLogsData, startDate, endDate],
   );
+  const { rows: costCompanies } = useMemo(
+    () => companyRows(rentedLogsData, startDate, endDate),
+    [rentedLogsData, startDate, endDate],
+  );
+  const ownCostShare = useMemo(() => {
+    if (!costCompanies.some((c) => c.isOwner)) return null;
+    return costCompanies.filter((c) => c.isOwner).reduce((s, c) => s + c.cost, 0);
+  }, [costCompanies]);
 
   const handleExportPdf = useCallback(async () => {
     if (!summary) return;
@@ -153,6 +161,7 @@ export default function ProfitDashboard() {
             label="Cost (rented machinery)" value={fmtCurrency(a.cost)}
             delta={pctDelta(a.cost, a.prevCost) && { ...pctDelta(a.cost, a.prevCost), goodWhenUp: false }}
             trend={rcTrend.map((d) => d.cost)} trendColor={COST}
+            sub={ownCostShare !== null ? `of which ${fmtCurrency(ownCostShare)} is own fleet` : undefined}
           />
         </Grid>
         <Grid item xs={12} sm={6} lg={3}>

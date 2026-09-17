@@ -38,10 +38,10 @@ export function generateEmployeesExcel({ employees = [], period, customDate }) {
   const { start, end } = getDateRange(period, customDate);
 
   addSheet(wb, "Employees", employees.map((e, i) => [
-    i + 1, e.name || "—", e.role?.title || "—", e.subRole?.title || "—",
-    e.dailyWage || 0, e.phone || "—", e.isActive ? "Active" : "Inactive",
-    e.aadharNumber || "—",
-  ]), ["#", "Name", "Role", "Sub-Role", "Daily Wage (₹)", "Phone", "Status", "Aadhar"]);
+    i + 1, e.employeeCode || "—", e.name || "—", e.role?.title || "—", e.subRole?.title || "—",
+    e.dailyWage || 0, e.overtimeRate || 0, e.phone || "—", e.joinDate ? fmtDate(e.joinDate) : "—",
+    e.isActive ? "Active" : "Inactive",
+  ]), ["#", "Code", "Name", "Role", "Sub-Role", "Daily Wage (₹)", "OT Rate (₹)", "Phone", "Join Date", "Status"]);
 
   saveWorkbook(wb, `Employees_Report_${fmtDate(start)}.xlsx`);
 }
@@ -163,6 +163,23 @@ export function generateMachineryExcel({ machines = [], period, customDate }) {
   ]), ["#", "Machine Name", "Type", "Machine Code", "Meter Reading", "Status"]);
 
   saveWorkbook(wb, `Machinery_Report_${fmtDate(start)}.xlsx`);
+}
+
+export function generateRentedVehiclesExcel({ vehicles = [], period, customDate }) {
+  const wb = createWorkbook();
+  const { start } = getDateRange(period, customDate);
+
+  addSheet(wb, "Summary", [
+    ["Total Vehicles", vehicles.length],
+    ["Active", vehicles.filter((v) => v.status === "active" || !v.status).length],
+  ], ["Metric", "Value"]);
+
+  addSheet(wb, "Rented Vehicle Master", vehicles.map((v, i) => [
+    i + 1, v.vehicleNumber || "—", v.vehicleType || "—", v.hourlyRate || 0,
+    v.ownerName || "—", v.ownerContact || "—", (v.status || "active").toUpperCase(), v.notes || "—",
+  ]), ["#", "Vehicle No.", "Type", "Hourly Rate (₹)", "Owner Name", "Owner Contact", "Status", "Notes"]);
+
+  saveWorkbook(wb, `RentedVehicleMaster_Report_${fmtDate(start)}.xlsx`);
 }
 
 export function generateDieselExcel({ entries = [], period, customDate }) {

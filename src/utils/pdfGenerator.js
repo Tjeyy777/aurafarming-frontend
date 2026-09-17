@@ -34,6 +34,17 @@ const fmtHours = (val) => Number(Number(val || 0).toFixed(3));
 // with cost = 0 even though they consumed billable hours on the vehicle.
 const calcEntryCost = (l) => Number(l.totalHours || 0) * Number(l.hourlyRate || 0);
 
+// Mirrors the healthy/due_soon/service_due/overdue thresholds used on the
+// Machinery dashboard, so the PDF's status matches what's shown on screen.
+const machineServiceStatus = (m) => {
+  if (!m.serviceReminderEnabled) return "—";
+  const remaining = Number(m.nextServiceDueAt || 0) - Number(m.currentMeterReading || 0);
+  if (remaining > 25) return "Healthy";
+  if (remaining > 0) return `Due soon (${remaining} hrs)`;
+  if (remaining === 0) return "Service due";
+  return `Overdue (${Math.abs(remaining)} hrs)`;
+};
+
 // ─── Get date range based on period and custom date ──────────────────────────
 export const getDateRange = (period, customDate) => {
   const base = customDate ? new Date(customDate) : new Date();
@@ -375,13 +386,17 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Name", "Role", "Daily Wage", "Phone", "Status"],
+      ["#", "Code", "Name", "Role", "Sub-Role", "Daily Wage", "OT Rate", "Phone", "Join Date", "Status"],
       employees.slice(0, 100).map((e, i) => [
         i + 1,
+        e.employeeCode || "—",
         e.name || "—",
-        e.role?.title || e.subRole?.title || "—",
+        e.role?.title || "—",
+        e.subRole?.title || "—",
         INR(e.dailyWage),
+        INR(e.overtimeRate),
         e.phone || "—",
+        e.joinDate ? fmtDate(e.joinDate) : "—",
         e.isActive ? "Active" : "Inactive",
       ]),
       y
@@ -415,7 +430,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Employee", "Status", "Daily Wage", "OT Hrs", "OT Pay", "Total Pay"],
+      ["#", "Date", "Employee", "In Time", "Status", "Daily Wage", "OT Hrs", "OT Pay", "Total Pay"],
       sortedAttendance.slice(0, 200).map((a, i) => {
         const dailyWage = a.employeeId?.dailyWage || 0;
         const otHours = Number(a.overtimeHour || 0);
@@ -426,6 +441,7 @@ export function generateQuarryPDF({
           i + 1,
           fmtDate(a.date),
           a.employeeId?.name || "—",
+          a.inTime || "—",
           (a.status || "—").toUpperCase(),
           INR(basePay),
           fmtHours(otHours),
@@ -449,26 +465,29 @@ export function generateQuarryPDF({
     filteredWeighbridge.forEach(e => {
       if (e.status === "completed") {
         const mat = e.materialId?.name || (e.remarks ? e.remarks.trim() : "Other");
-        if (!materialSummary[mat]) materialSummary[mat] = { trips: 0, weight: 0 };
+        if (!materialSummary[mat]) materialSummary[mat] = { trips: 0, weight: 0, revenue: 0 };
         materialSummary[mat].trips += 1;
         materialSummary[mat].weight += Number(e.netWeight || 0);
+        materialSummary[mat].revenue += (Number(e.netWeight || 0) / 1000) * Number(e.materialRate || 0);
       }
     });
     const materialCards = Object.keys(materialSummary).map(mat => ({
       label: mat.toUpperCase(),
-      value: `${materialSummary[mat].trips} trips, ${materialSummary[mat].weight.toLocaleString("en-IN")} kg`
+      value: `${materialSummary[mat].trips} trips, ${materialSummary[mat].weight.toLocaleString("en-IN")} kg, ${INR(materialSummary[mat].revenue)}`
     }));
+    const totalWeighbridgeRevenue = Object.values(materialSummary).reduce((s, m) => s + m.revenue, 0);
 
     y = drawSummaryCards(doc, [
       { label: "Total Entries", value: filteredWeighbridge.length },
       { label: "Completed", value: completedTrips },
       { label: "Net Weight", value: `${totalWeighbridgeNetWeight.toLocaleString("en-IN")} kg` },
       { label: "Unique Vehicles", value: uniqueVehicles },
+      { label: "Total Revenue", value: INR(totalWeighbridgeRevenue) },
       ...materialCards
     ], y);
     y = drawTable(
       doc,
-      ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Material", "Status", "Entry Time"],
+      ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Material", "Rate/Ton", "Revenue", "Status", "Entry Time", "Exit Time"],
       filteredWeighbridge.slice(0, 200).map((e, i) => [
         i + 1,
         e.vehicleNumber || "—",
@@ -477,8 +496,11 @@ export function generateQuarryPDF({
         e.loadedWeight ?? "—",
         e.netWeight ?? "—",
         e.materialId?.name || e.remarks || "—",
+        e.materialRate ? INR(e.materialRate) : "—",
+        e.status === "completed" ? INR((Number(e.netWeight || 0) / 1000) * Number(e.materialRate || 0)) : "—",
         (e.status || "—").toUpperCase(),
         fmtDateTime(e.entryTime),
+        e.exitTime ? fmtDateTime(e.exitTime) : "—",
       ]),
       y
     );
@@ -497,15 +519,18 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost", "Total Value"],
+      ["#", "Item Name", "Category", "Seller", "Current Stock", "Low Stock At", "Unit", "Unit Cost", "Total Value", "Status"],
       explosiveItems.map((item, i) => [
         i + 1,
         item.name || "—",
         item.category || "—",
+        item.seller?.name || "—",
         item.currentStock ?? 0,
+        item.lowStockLimit ?? 0,
         item.unit || "—",
         INR(item.unitCost),
         INR((item.currentStock || 0) * (item.unitCost || 0)),
+        (item.status || "active").toUpperCase(),
       ]),
       y
     );
@@ -524,15 +549,17 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Item Name", "Category", "Current Stock", "Unit", "Unit Cost", "Total Value"],
+      ["#", "Item Name", "Category", "Current Stock", "Low Stock At", "Unit", "Unit Cost", "Total Value", "Status"],
       consumableItems.map((item, i) => [
         i + 1,
         item.name || "—",
         item.category || "—",
         item.currentStock ?? 0,
+        item.lowStockLimit ?? 0,
         item.unit || "—",
         INR(item.unitCost),
         INR((item.currentStock || 0) * (item.unitCost || 0)),
+        (item.status || "active").toUpperCase(),
       ]),
       y
     );
@@ -552,13 +579,15 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Machine Name", "Type", "Machine Code", "Meter Reading", "Status"],
+      ["#", "Machine Name", "Type", "Machine Code", "Fuel", "Meter Reading", "Service Status", "Status"],
       machines.map((m, i) => [
         i + 1,
         m.machineName || m.name || "—",
         m.machineType || m.type || "—",
         m.machineCode || "—",
+        m.fuelType || "—",
         m.currentMeterReading ?? "—",
+        machineServiceStatus(m),
         (m.status || "Active").toUpperCase(),
       ]),
       y
@@ -579,7 +608,7 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "For", "Litres", "Rate/L", "Total Cost"],
+      ["#", "Date", "For", "Litres", "Rate/L", "Total Cost", "Notes"],
       filteredDiesel.map((e, i) => [
         i + 1,
         fmtDate(e.date),
@@ -587,6 +616,7 @@ export function generateQuarryPDF({
         e.litres ?? "—",
         INR(e.pricePerLitre),
         INR(e.totalCost),
+        e.notes || "—",
       ]),
       y
     );
@@ -605,12 +635,11 @@ export function generateQuarryPDF({
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Expense Name", "Category", "Amount", "Notes"],
+      ["#", "Date", "Expense Name", "Amount", "Notes"],
       filteredExpenses.map((e, i) => [
         i + 1,
         fmtDate(e.date),
         e.expenseName || "—",
-        e.category || "—",
         INR(e.amount),
         e.notes || "—",
       ]),
@@ -634,21 +663,30 @@ export function generateQuarryPDF({
     const totalRentedCost = sortedRentedLogs.reduce((s, l) => s + calcEntryCost(l), 0);
     const totalHours = mainEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
     const totalTripHours = tripEntries.reduce((s, l) => s + Number(l.totalHours || 0), 0);
+    const ownRentedCost = sortedRentedLogs.filter((l) => l.companyId?.isOwner).reduce((s, l) => s + calcEntryCost(l), 0);
+    const otherRentedCost = totalRentedCost - ownRentedCost;
+    const hasOwnerRented = sortedRentedLogs.some((l) => l.companyId?.isOwner);
     y = drawSummaryCards(doc, [
       { label: "Main Entries", value: mainEntries.length },
       { label: "Trips", value: tripEntries.length },
       { label: "Our Hours", value: fmtHours(totalHours) },
       { label: "Trip Hours", value: fmtHours(totalTripHours) },
       { label: "Total Cost", value: INR(totalRentedCost) },
+      ...(hasOwnerRented ? [
+        { label: "Own Fleet Cost", value: INR(ownRentedCost) },
+        { label: "Other Companies Cost", value: INR(otherRentedCost) },
+      ] : []),
     ], y);
     y = drawTable(
       doc,
-      ["#", "Date", "Vehicle", "Type", "Driver", "Opening", "Closing", "Hours", "Rate/Hr", "Cost", "Trip?", "Remarks"],
+      ["#", "Date", "Vehicle", "Company", "Type", "Material", "Driver", "Opening", "Closing", "Hours", "Rate/Hr", "Cost", "Trip?", "Remarks"],
       sortedRentedLogs.map((l, i) => [
         i + 1,
         fmtDate(l.date),
         l.vehicleId?.vehicleNumber || "—",
+        l.companyId ? `${l.companyId.name}${l.companyId.isOwner ? " (Own)" : ""}` : "—",
         l.vehicleId?.vehicleType || "—",
+        l.materialId?.name || "—",
         l.driverName || "—",
         l.openingMeter ?? "—",
         l.closingMeter ?? "—",
@@ -704,9 +742,9 @@ export function generateEmployeesPDF({ employees = [], period, customDate }) {
       { label: "Inactive", value: employees.filter(e => !e.isActive).length },
       { label: "Total", value: employees.length },
     ], y);
-    y = drawTable(doc, ["#", "Name", "Role", "Sub-Role", "Daily Wage", "Phone", "Status", "Aadhar"],
-      employees.map((e, i) => [i + 1, e.name || "—", e.role?.title || "—", e.subRole?.title || "—",
-        INR(e.dailyWage), e.phone || "—", e.isActive ? "Active" : "Inactive", e.aadharNumber || "—"]), y);
+    y = drawTable(doc, ["#", "Code", "Name", "Role", "Sub-Role", "Daily Wage", "OT Rate", "Phone", "Join Date", "Status"],
+      employees.map((e, i) => [i + 1, e.employeeCode || "—", e.name || "—", e.role?.title || "—", e.subRole?.title || "—",
+        INR(e.dailyWage), INR(e.overtimeRate), e.phone || "—", e.joinDate ? fmtDate(e.joinDate) : "—", e.isActive ? "Active" : "Inactive"]), y);
   } else { y = drawNoData(doc, y); }
   finishModulePDF(doc, "Employees", periodLabel, start);
 }
@@ -733,7 +771,7 @@ export function generateAttendancePDF({ records = [], period, customDate }) {
       { label: "OT Hours", value: fmtHours(totalOT) },
       { label: "Total Wages", value: INR(totalWages) },
     ], y);
-    y = drawTable(doc, ["#", "Date", "Employee", "Role", "Status", "Daily Wage", "OT Hrs", "OT Pay", "Total Pay"],
+    y = drawTable(doc, ["#", "Date", "Employee", "Role", "In Time", "Status", "Daily Wage", "OT Hrs", "OT Pay", "Total Pay"],
       sorted.map((a, i) => {
         const dailyWage = a.employeeId?.dailyWage || 0;
         const otHours = Number(a.overtimeHour || 0);
@@ -743,6 +781,7 @@ export function generateAttendancePDF({ records = [], period, customDate }) {
         return [
           i + 1, fmtDate(a.date), a.employeeId?.name || "—",
           a.employeeId?.role?.title || "—",
+          a.inTime || "—",
           (a.status || "—").toUpperCase(),
           INR(basePay), fmtHours(otHours), INR(otPay),
           INR(Number(a.wage || (basePay + otPay))),
@@ -758,6 +797,7 @@ export function generateWeighbridgePDF({ entries = [], period, customDate }) {
   const filtered = filterByDateRange(entries, start, end, "entryTime");
   const totalNet = filtered.reduce((s, e) => s + Number(e.netWeight || 0), 0);
   const completed = filtered.filter(e => e.status === "completed").length;
+  const totalRevenue = filtered.reduce((s, e) => s + (e.status === "completed" ? (Number(e.netWeight || 0) / 1000) * Number(e.materialRate || 0) : 0), 0);
   y = drawSectionTitle(doc, `Weighbridge (${periodLabel})`, y);
   if (filtered.length > 0) {
     const uniqueVehicles = new Set(filtered.map(e => e.vehicleNumber)).size;
@@ -765,14 +805,15 @@ export function generateWeighbridgePDF({ entries = [], period, customDate }) {
     filtered.forEach(e => {
       if (e.status === "completed") {
         const mat = e.materialId?.name || (e.remarks ? e.remarks.trim() : "Other");
-        if (!materialSummary[mat]) materialSummary[mat] = { trips: 0, weight: 0 };
+        if (!materialSummary[mat]) materialSummary[mat] = { trips: 0, weight: 0, revenue: 0 };
         materialSummary[mat].trips += 1;
         materialSummary[mat].weight += Number(e.netWeight || 0);
+        materialSummary[mat].revenue += (Number(e.netWeight || 0) / 1000) * Number(e.materialRate || 0);
       }
     });
     const materialCards = Object.keys(materialSummary).map(mat => ({
       label: mat.toUpperCase(),
-      value: `${materialSummary[mat].trips} trips, ${materialSummary[mat].weight.toLocaleString("en-IN")} kg`
+      value: `${materialSummary[mat].trips} trips, ${materialSummary[mat].weight.toLocaleString("en-IN")} kg, ${INR(materialSummary[mat].revenue)}`
     }));
 
     y = drawSummaryCards(doc, [
@@ -780,12 +821,15 @@ export function generateWeighbridgePDF({ entries = [], period, customDate }) {
       { label: "Completed", value: completed },
       { label: "Net Weight", value: `${totalNet.toLocaleString("en-IN")} kg` },
       { label: "Unique Vehicles", value: uniqueVehicles },
+      { label: "Total Revenue", value: INR(totalRevenue) },
       ...materialCards
     ], y);
-    y = drawTable(doc, ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Material", "Status", "Entry Time"],
+    y = drawTable(doc, ["#", "Vehicle", "Driver", "Empty (kg)", "Loaded (kg)", "Net (kg)", "Material", "Rate/Ton", "Revenue", "Status", "Entry Time", "Exit Time"],
       filtered.map((e, i) => [i + 1, e.vehicleNumber || "—", e.driverName || "—", e.emptyWeight ?? "—",
         e.loadedWeight ?? "—", e.netWeight ?? "—", e.materialId?.name || e.remarks || "—",
-        (e.status || "—").toUpperCase(), fmtDateTime(e.entryTime)]), y);
+        e.materialRate ? INR(e.materialRate) : "—",
+        e.status === "completed" ? INR((Number(e.netWeight || 0) / 1000) * Number(e.materialRate || 0)) : "—",
+        (e.status || "—").toUpperCase(), fmtDateTime(e.entryTime), e.exitTime ? fmtDateTime(e.exitTime) : "—"]), y);
   } else { y = drawNoData(doc, y, "No weighbridge entries for this period."); }
   finishModulePDF(doc, "Weighbridge", periodLabel, start);
 }
@@ -796,13 +840,17 @@ export function generateExplosivesPDF({ items = [], period, customDate }) {
   const totalValue = items.reduce((s, i) => s + (i.currentStock || 0) * (i.unitCost || 0), 0);
   y = drawSectionTitle(doc, "Explosives Inventory", y);
   if (items.length > 0) {
+    const lowStock = items.filter((i) => Number(i.currentStock || 0) <= Number(i.lowStockLimit || 0)).length;
     y = drawSummaryCards(doc, [
       { label: "Total Items", value: items.length },
       { label: "Inventory Value", value: INR(totalValue) },
+      { label: "Low Stock Items", value: lowStock },
     ], y);
-    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost", "Value"],
-      items.map((item, i) => [i + 1, item.name || "—", item.category || "—", item.currentStock ?? 0,
-        item.unit || "—", INR(item.unitCost), INR((item.currentStock || 0) * (item.unitCost || 0))]), y);
+    y = drawTable(doc, ["#", "Item", "Category", "Seller", "Stock", "Low Stock At", "Unit", "Unit Cost", "Value", "Status"],
+      items.map((item, i) => [i + 1, item.name || "—", item.category || "—", item.seller?.name || "—",
+        item.currentStock ?? 0, item.lowStockLimit ?? 0,
+        item.unit || "—", INR(item.unitCost), INR((item.currentStock || 0) * (item.unitCost || 0)),
+        (item.status || "active").toUpperCase()]), y);
   } else { y = drawNoData(doc, y); }
   finishModulePDF(doc, "Explosives", periodLabel, start);
 }
@@ -813,13 +861,16 @@ export function generateConsumablesPDF({ items = [], period, customDate }) {
   const totalValue = items.reduce((s, i) => s + (i.currentStock || 0) * (i.unitCost || 0), 0);
   y = drawSectionTitle(doc, "Consumables Inventory", y);
   if (items.length > 0) {
+    const lowStock = items.filter((i) => Number(i.currentStock || 0) <= Number(i.lowStockLimit || 0)).length;
     y = drawSummaryCards(doc, [
       { label: "Total Items", value: items.length },
       { label: "Inventory Value", value: INR(totalValue) },
+      { label: "Low Stock Items", value: lowStock },
     ], y);
-    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Unit", "Unit Cost", "Value"],
+    y = drawTable(doc, ["#", "Item", "Category", "Stock", "Low Stock At", "Unit", "Unit Cost", "Value", "Status"],
       items.map((item, i) => [i + 1, item.name || "—", item.category || "—", item.currentStock ?? 0,
-        item.unit || "—", INR(item.unitCost), INR((item.currentStock || 0) * (item.unitCost || 0))]), y);
+        item.lowStockLimit ?? 0, item.unit || "—", INR(item.unitCost), INR((item.currentStock || 0) * (item.unitCost || 0)),
+        (item.status || "active").toUpperCase()]), y);
   } else { y = drawNoData(doc, y); }
   finishModulePDF(doc, "Consumables", periodLabel, start);
 }
@@ -829,15 +880,48 @@ export function generateMachineryPDF({ machines = [], period, customDate }) {
   let y = 48;
   y = drawSectionTitle(doc, `Machinery (${machines.length} registered)`, y);
   if (machines.length > 0) {
+    const overdueCount = machines.filter((m) => machineServiceStatus(m).startsWith("Overdue")).length;
     y = drawSummaryCards(doc, [
       { label: "Total", value: machines.length },
       { label: "Active", value: machines.filter(m => m.status === "active" || !m.status).length },
+      { label: "Overdue Service", value: overdueCount },
     ], y);
-    y = drawTable(doc, ["#", "Machine Name", "Type", "Machine Code", "Meter Reading", "Status"],
+    y = drawTable(doc, ["#", "Machine Name", "Type", "Machine Code", "Fuel", "Meter Reading", "Service Status", "Status"],
       machines.map((m, i) => [i + 1, m.machineName || m.name || "—", m.machineType || m.type || "—",
-        m.machineCode || "—", m.currentMeterReading ?? "—", (m.status || "Active").toUpperCase()]), y);
+        m.machineCode || "—", m.fuelType || "—", m.currentMeterReading ?? "—", machineServiceStatus(m),
+        (m.status || "Active").toUpperCase()]), y);
   } else { y = drawNoData(doc, y); }
   finishModulePDF(doc, "Machinery", periodLabel, start);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// RENTED VEHICLE MASTER — the vehicle/owner database itself (not usage logs).
+// ═════════════════════════════════════════════════════════════════════════════
+export function generateRentedVehiclesPDF({ vehicles = [], period, customDate }) {
+  const { doc, start, periodLabel } = createModulePDF("RentedVehicleMaster", period, customDate);
+  let y = 48;
+  y = drawSectionTitle(doc, `Rented Vehicle Master (${vehicles.length} registered)`, y);
+  if (vehicles.length > 0) {
+    const active = vehicles.filter((v) => v.status === "active" || !v.status).length;
+    const avgRate = vehicles.reduce((s, v) => s + Number(v.hourlyRate || 0), 0) / vehicles.length;
+    y = drawSummaryCards(doc, [
+      { label: "Total Vehicles", value: vehicles.length },
+      { label: "Active", value: active },
+      { label: "Avg Hourly Rate", value: INR(avgRate) },
+    ], y);
+    y = drawTable(doc, ["#", "Vehicle No.", "Type", "Hourly Rate", "Owner Name", "Owner Contact", "Status", "Notes"],
+      vehicles.map((v, i) => [
+        i + 1,
+        v.vehicleNumber || "—",
+        v.vehicleType || "—",
+        INR(v.hourlyRate),
+        v.ownerName || "—",
+        v.ownerContact || "—",
+        (v.status || "active").toUpperCase(),
+        v.notes || "—",
+      ]), y);
+  } else { y = drawNoData(doc, y, "No rented vehicles registered."); }
+  finishModulePDF(doc, "RentedVehicleMaster", periodLabel, start);
 }
 
 export function generateDieselPDF({ entries = [], period, customDate }) {
@@ -853,10 +937,10 @@ export function generateDieselPDF({ entries = [], period, customDate }) {
       { label: "Total Cost", value: INR(totalC) },
       { label: "Entries", value: filtered.length },
     ], y);
-    y = drawTable(doc, ["#", "Date", "For", "Litres", "Rate/L", "Total Cost"],
+    y = drawTable(doc, ["#", "Date", "For", "Litres", "Rate/L", "Total Cost", "Notes"],
       filtered.map((e, i) => [i + 1, fmtDate(e.date),
         e.dieselFor === "machine" ? (e.machineId?.machineName || "Machine") : (e.expenseName || "—"),
-        e.litres ?? "—", INR(e.pricePerLitre), INR(e.totalCost)]), y);
+        e.litres ?? "—", INR(e.pricePerLitre), INR(e.totalCost), e.notes || "—"]), y);
   } else { y = drawNoData(doc, y, "No diesel entries for this period."); }
   finishModulePDF(doc, "Diesel", periodLabel, start);
 }
@@ -872,9 +956,9 @@ export function generateExpensesPDF({ expenses = [], period, customDate }) {
       { label: "Total Amount", value: INR(total) },
       { label: "Entries", value: filtered.length },
     ], y);
-    y = drawTable(doc, ["#", "Date", "Expense Name", "Category", "Amount", "Notes"],
+    y = drawTable(doc, ["#", "Date", "Expense Name", "Amount", "Notes"],
       filtered.map((e, i) => [i + 1, fmtDate(e.date), e.expenseName || "—",
-        e.category || "—", INR(e.amount), e.notes || "—"]), y);
+        INR(e.amount), e.notes || "—"]), y);
   } else { y = drawNoData(doc, y, "No expense entries for this period."); }
   finishModulePDF(doc, "Expenses", periodLabel, start);
 }
@@ -902,14 +986,21 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
   // (that vehicle's total hours × its hourly rate) — i.e. every entry for
   // that company, main or trip, recomputed the same way.
   const companyCosts = {};
+  const companyIsOwner = {};
+  let ownCost = 0;
+  let otherCost = 0;
   sortedLogs.forEach(l => {
     const cName = l.companyId?.name || "Unassigned";
+    const isOwner = !!l.companyId?.isOwner;
     if (!companyCosts[cName]) companyCosts[cName] = 0;
     companyCosts[cName] += calcEntryCost(l);
+    companyIsOwner[cName] = isOwner;
+    if (isOwner) ownCost += calcEntryCost(l); else otherCost += calcEntryCost(l);
   });
+  const hasOwnerCompany = Object.values(companyIsOwner).some(Boolean);
 
   const costCards = Object.keys(companyCosts).map(cName => ({
-    label: cName,
+    label: companyIsOwner[cName] ? `${cName} (Own)` : cName,
     value: INR(companyCosts[cName])
   }));
 
@@ -922,18 +1013,23 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
       { label: "Our Hours", value: fmtHours(totalHours) },
       { label: "Trip Hours", value: fmtHours(totalTripHours) },
       { label: "Total Cost", value: INR(totalCost) },
+      ...(hasOwnerCompany ? [
+        { label: "Own Fleet Cost", value: INR(ownCost) },
+        { label: "Other Companies Cost", value: INR(otherCost) },
+      ] : []),
       ...costCards
     ], y);
 
     y = drawTable(
       doc,
-      ["#", "Date", "Vehicle", "Company", "Type", "Driver", "Rate/Hr", "Opening", "Closing", "Hours", "Cost", "Trip?", "Remarks"],
+      ["#", "Date", "Vehicle", "Company", "Type", "Material", "Driver", "Rate/Hr", "Opening", "Closing", "Hours", "Cost", "Trip?", "Remarks"],
       sortedLogs.map((l, i) => [
         i + 1,
         fmtDate(l.date),
         l.vehicleId?.vehicleNumber || "—",
-        l.companyId?.name || "—",
+        l.companyId ? `${l.companyId.name}${l.companyId.isOwner ? " (Own)" : ""}` : "—",
         l.vehicleId?.vehicleType || "—",
+        l.materialId?.name || "—",
         l.driverName || "—",
         INR(l.hourlyRate),
         l.openingMeter ?? "—",
@@ -949,17 +1045,18 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
         columnStyles: {
           0: { cellWidth: 7, halign: "center" },
           1: { cellWidth: 18 },
-          2: { cellWidth: 24 },
-          3: { cellWidth: 22 },
-          4: { cellWidth: 16 },
-          5: { cellWidth: 20 },
-          6: { cellWidth: 16, halign: "right" },
-          7: { cellWidth: 16, halign: "right" },
-          8: { cellWidth: 16, halign: "right" },
+          2: { cellWidth: 22 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 14 },
+          5: { cellWidth: 18 },
+          6: { cellWidth: 18 },
+          7: { cellWidth: 14, halign: "right" },
+          8: { cellWidth: 14, halign: "right" },
           9: { cellWidth: 14, halign: "right" },
-          10: { cellWidth: 20, halign: "right" },
-          11: { cellWidth: 12, halign: "center" },
-          // 12 "Remarks" left to auto-fill remaining width
+          10: { cellWidth: 12, halign: "right" },
+          11: { cellWidth: 18, halign: "right" },
+          12: { cellWidth: 12, halign: "center" },
+          // 13 "Remarks" left to auto-fill remaining width
         },
       }
     );
@@ -982,9 +1079,10 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
         const dayCompanies = {};
         dayLogs.forEach(l => {
           const cName = l.companyId?.name || "Unassigned";
-          if (!dayCompanies[cName]) dayCompanies[cName] = true;
+          if (!dayCompanies[cName]) dayCompanies[cName] = !!l.companyId?.isOwner;
         });
         const companyList = Object.keys(dayCompanies).sort();
+        const companyHeaderLabel = (cName) => dayCompanies[cName] ? `${cName} (Own)` : cName;
 
         const vehicleGroups = {};
         dayLogs.forEach(l => {
@@ -999,7 +1097,7 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
           vehicleGroups[vName].companies[cName].cost += calcEntryCost(l);
         });
 
-        const headers = ["Vehicle", "Total Hrs", ...companyList];
+        const headers = ["Vehicle", "Total Hrs", ...companyList.map(companyHeaderLabel)];
         const dataRows = Object.keys(vehicleGroups).map(vName => {
           const vg = vehicleGroups[vName];
           return [
@@ -1069,6 +1167,10 @@ export function generateAnalyticsPDF({
   );
 
   // 1 — Executive summary
+  const ownCost = companies.filter((c) => c.isOwner).reduce((s, c) => s + c.cost, 0);
+  const otherCost = companies.filter((c) => !c.isOwner).reduce((s, c) => s + c.cost, 0);
+  const hasOwner = companies.some((c) => c.isOwner);
+
   y = drawSectionTitle(doc, "Executive Summary", y);
   y = drawSummaryCards(doc, [
     { label: "Revenue", value: INR(summary.revenue) },
@@ -1077,6 +1179,10 @@ export function generateAnalyticsPDF({
     { label: "Margin", value: `${(summary.margin || 0).toFixed(1)}%` },
     { label: "Cost / Tonne", value: INR(summary.costPerTonne) },
     { label: "Tonnes Produced", value: Math.round(summary.tonnes || 0).toLocaleString("en-IN") },
+    ...(hasOwner ? [
+      { label: "Own Fleet Cost", value: INR(ownCost) },
+      { label: "Other Companies Cost", value: INR(otherCost) },
+    ] : []),
   ], y);
 
   // 1b — Revenue vs Cost chart
@@ -1125,7 +1231,7 @@ export function generateAnalyticsPDF({
       doc,
       ["Company", "Cost", "Work Hrs", "Trip Hrs", "Trips", "Vehicles", "% Share"],
       companies.map((c) => [
-        c.name, INR(c.cost), H(c.workHours), H(c.tripHours), c.trips, c.vehicles, `${(c.share || 0).toFixed(1)}%`,
+        c.isOwner ? `${c.name} (Own)` : c.name, INR(c.cost), H(c.workHours), H(c.tripHours), c.trips, c.vehicles, `${(c.share || 0).toFixed(1)}%`,
       ]),
       y,
     );
