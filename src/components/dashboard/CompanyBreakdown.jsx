@@ -40,6 +40,23 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
 
   const grandTotalCost = useMemo(() => perCompany.reduce((s, c) => s + c.cost, 0), [perCompany]);
 
+  const ownPartyIds = useMemo(
+    () => new Set(parties.filter((p) => p.isOwner).map((p) => p._id)),
+    [parties],
+  );
+  const hasOwner = ownPartyIds.size > 0;
+  const ownVsOther = useMemo(() => {
+    let own = 0, other = 0;
+    perCompany.forEach((c) => {
+      if (ownPartyIds.has(c.id)) own += c.cost; else other += c.cost;
+    });
+    return {
+      own, other,
+      ownShare: grandTotalCost > 0 ? (own / grandTotalCost) * 100 : 0,
+      otherShare: grandTotalCost > 0 ? (other / grandTotalCost) * 100 : 0,
+    };
+  }, [perCompany, ownPartyIds, grandTotalCost]);
+
   const selectedLogs = useMemo(() => {
     if (selected === ALL) return periodLogs;
     if (selected === UNASSIGNED) return periodLogs.filter((l) => !l.companyId);
@@ -179,6 +196,26 @@ export default function CompanyBreakdown({ logs, parties = [], startDate, endDat
               <StatCard label="Drivers" value={stats.drivers} />
             </Grid>
           </Grid>
+
+          {selected === ALL && hasOwner && (
+            <Grid container spacing={2.5}>
+              <Grid item xs={6} md={3}>
+                <StatCard
+                  label="Own fleet cost"
+                  value={fmtCurrency(ownVsOther.own)}
+                  sub={`${ownVsOther.ownShare.toFixed(1)}% of rented spend`}
+                  accent="warning.main"
+                />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <StatCard
+                  label="Other companies' cost"
+                  value={fmtCurrency(ownVsOther.other)}
+                  sub={`${ownVsOther.otherShare.toFixed(1)}% of rented spend`}
+                />
+              </Grid>
+            </Grid>
+          )}
 
           {selected === ALL && companyChartData.length > 1 && (
             <ChartCard title="Share of rented spend by company">

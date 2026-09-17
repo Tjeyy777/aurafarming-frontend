@@ -38,9 +38,8 @@ export function profitSummary(weighbridge, rentedLogs, startDate, endDate) {
   });
 
   (rentedLogs || []).forEach((l) => {
-    if (l.isTrip) return;
     const d = new Date(l.date);
-    const c = Number(l.cost || 0);
+    const c = calcEntryCost(l);
     if (inRange(d, start, end)) {
       cost += c;
       const m = l.materialId?.name || 'Unspecified';
@@ -71,7 +70,7 @@ export function companyRows(rentedLogs, startDate, endDate) {
     const id = l.companyId?._id || '__UNASSIGNED__';
     const name = l.companyId?.name || 'Unassigned';
     const row = map.get(id) || {
-      id, name, cost: 0, hours: 0, workHours: 0, tripHours: 0, trips: 0, entries: 0,
+      id, name, isOwner: !!l.companyId?.isOwner, cost: 0, hours: 0, workHours: 0, tripHours: 0, trips: 0, entries: 0,
       vehicles: new Set(), drivers: new Set(),
     };
     const h = Number(l.totalHours || 0);

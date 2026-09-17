@@ -9,6 +9,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import BusinessIcon from '@mui/icons-material/Business';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import Tooltip from '@mui/material/Tooltip';
+import Chip from '@mui/material/Chip';
 import { useTheme } from '@mui/material/styles';
 import { useParties, useCreateParty, useUpdateParty, useDeleteParty } from '../../hooks/useParties';
 
@@ -43,6 +47,10 @@ export default function PartyManagerDialog({ open, onClose }) {
   const handleCancelEdit = () => {
     setEditingId(null);
     setName('');
+  };
+
+  const handleToggleOwner = (party) => {
+    updateParty.mutate({ id: party._id, payload: { isOwner: !party.isOwner } });
   };
 
   return (
@@ -87,8 +95,12 @@ export default function PartyManagerDialog({ open, onClose }) {
               )}
             </Stack>
           </form>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            <StarIcon fontSize="inherit" sx={{ color: '#f5a623', verticalAlign: 'middle', mr: 0.5 }} />
+            Star the company that is your own — its vehicles will be tracked separately from other rental companies.
+          </Typography>
         </Box>
-        
+
         <Divider />
         
         <List sx={{ p: 0, maxHeight: 400, overflow: 'auto' }}>
@@ -106,16 +118,31 @@ export default function PartyManagerDialog({ open, onClose }) {
                 {index > 0 && <Divider />}
                 <ListItem
                   sx={{
+                    bgcolor: party.isOwner
+                      ? (theme.palette.mode === 'dark' ? 'rgba(255,193,7,0.08)' : '#fffbea')
+                      : 'transparent',
                     '&:hover': { bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc' }
                   }}
                   secondaryAction={
                     <Stack direction="row" spacing={0.5}>
+                      <Tooltip title={party.isOwner ? 'This is your own company — click to unmark' : 'Mark as your own company'}>
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={() => handleToggleOwner(party)}
+                          disabled={updateParty.isPending}
+                        >
+                          {party.isOwner
+                            ? <StarIcon fontSize="small" sx={{ color: '#f5a623' }} />
+                            : <StarBorderIcon fontSize="small" />}
+                        </IconButton>
+                      </Tooltip>
                       <IconButton edge="end" size="small" onClick={() => handleEdit(party)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
-                      <IconButton 
-                        edge="end" 
-                        size="small" 
+                      <IconButton
+                        edge="end"
+                        size="small"
                         color="error"
                         onClick={() => deleteParty.mutate(party._id)}
                       >
@@ -124,9 +151,16 @@ export default function PartyManagerDialog({ open, onClose }) {
                     </Stack>
                   }
                 >
-                  <ListItemText 
-                    primary={party.name} 
-                    primaryTypographyProps={{ fontWeight: 600 }}
+                  <ListItemText
+                    primary={(
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <span>{party.name}</span>
+                        {party.isOwner && (
+                          <Chip label="Owner" size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }} />
+                        )}
+                      </Stack>
+                    )}
+                    primaryTypographyProps={{ fontWeight: 600, component: 'div' }}
                   />
                 </ListItem>
               </React.Fragment>

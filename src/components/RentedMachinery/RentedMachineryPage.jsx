@@ -14,6 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import SearchIcon from '@mui/icons-material/Search';
+import StarIcon from '@mui/icons-material/Star';
 import { useSnackbar } from 'notistack';
 
 import {
@@ -512,6 +513,7 @@ export default function RentedMachineryPage() {
                 <MenuItem value="">None</MenuItem>
                 {parties.map(p => (
                   <MenuItem key={p._id} value={p._id}>
+                    {p.isOwner && <StarIcon fontSize="inherit" sx={{ color: '#f5a623', mr: 0.5, verticalAlign: 'middle' }} />}
                     {p.name}
                   </MenuItem>
                 ))}
@@ -627,6 +629,7 @@ export default function RentedMachineryPage() {
                               <MenuItem value="">None</MenuItem>
                               {parties.map(p => (
                                 <MenuItem key={p._id} value={p._id}>
+                                  {p.isOwner && <StarIcon fontSize="inherit" sx={{ color: '#f5a623', mr: 0.5, verticalAlign: 'middle' }} />}
                                   {p.name}
                                 </MenuItem>
                               ))}
@@ -682,7 +685,10 @@ export default function RentedMachineryPage() {
                         ) : (
                           <>
                             <RowCell sx={{ fontWeight: 700 }}>{log.vehicleId?.vehicleNumber}</RowCell>
-                            <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>{log.companyId?.name || '—'}</RowCell>
+                            <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                              {log.companyId?.isOwner && <StarIcon fontSize="inherit" sx={{ color: '#f5a623', mr: 0.5, verticalAlign: 'middle' }} />}
+                              {log.companyId?.name || '—'}
+                            </RowCell>
                             <RowCell sx={{ color: 'info.main' }}>{log.materialId?.name || '—'}</RowCell>
                             <RowCell>{fmtDate(log.date)}</RowCell>
                             <RowCell>{fmtNumber(log.openingMeter)}</RowCell>
@@ -739,6 +745,7 @@ export default function RentedMachineryPage() {
                                       <MenuItem value="">None</MenuItem>
                                       {parties.map(p => (
                                         <MenuItem key={p._id} value={p._id}>
+                                          {p.isOwner && <StarIcon fontSize="inherit" sx={{ color: '#f5a623', mr: 0.5, verticalAlign: 'middle' }} />}
                                           {p.name}
                                         </MenuItem>
                                       ))}
@@ -795,7 +802,10 @@ export default function RentedMachineryPage() {
                                 ) : (
                                   <>
                                     <RowCell>{log.vehicleId?.vehicleNumber}</RowCell>
-                                    <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>{child.companyId?.name || '—'}</RowCell>
+                                    <RowCell sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                                      {child.companyId?.isOwner && <StarIcon fontSize="inherit" sx={{ color: '#f5a623', mr: 0.5, verticalAlign: 'middle' }} />}
+                                      {child.companyId?.name || '—'}
+                                    </RowCell>
                                     <RowCell sx={{ color: 'info.main' }}>{child.materialId?.name || '—'}</RowCell>
                                     <RowCell>{fmtDate(child.date)}</RowCell>
                                     <RowCell>{fmtNumber(child.openingMeter)}</RowCell>
