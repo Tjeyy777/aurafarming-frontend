@@ -372,7 +372,7 @@ export default function ExpensesPage() {
                       Date
                     </Typography>
                     <Typography sx={{ fontWeight: 700 }}>
-                      {new Date(expense.date).toLocaleDateString()}
+                      {new Date(expense.date).toLocaleDateString("en-IN")}
                     </Typography>
                   </Box>
                 </Stack>
@@ -500,12 +500,12 @@ export default function ExpensesPage() {
 
         <DialogContent dividers>
           <Stack spacing={1.5}>
-            <Typography><strong>Date:</strong> {selectedExpense?.date ? new Date(selectedExpense.date).toLocaleDateString() : ""}</Typography>
+            <Typography><strong>Date:</strong> {selectedExpense?.date ? new Date(selectedExpense.date).toLocaleDateString("en-IN") : ""}</Typography>
             <Typography><strong>Expense Name:</strong> {selectedExpense?.expenseName}</Typography>
             <Typography><strong>Amount:</strong> ₹{selectedExpense?.amount}</Typography>
             <Typography><strong>Notes:</strong> {selectedExpense?.notes || "—"}</Typography>
-            <Typography><strong>Created At:</strong> {selectedExpense?.createdAt ? new Date(selectedExpense.createdAt).toLocaleString() : ""}</Typography>
-            <Typography><strong>Updated At:</strong> {selectedExpense?.updatedAt ? new Date(selectedExpense.updatedAt).toLocaleString() : ""}</Typography>
+            <Typography><strong>Created At:</strong> {selectedExpense?.createdAt ? new Date(selectedExpense.createdAt).toLocaleString("en-IN") : ""}</Typography>
+            <Typography><strong>Updated At:</strong> {selectedExpense?.updatedAt ? new Date(selectedExpense.updatedAt).toLocaleString("en-IN") : ""}</Typography>
           </Stack>
         </DialogContent>
 
@@ -546,7 +546,7 @@ export default function ExpensesPage() {
           </Typography>
 
           <Stack spacing={1}>
-            <Typography><strong>Date:</strong> {selectedExpense?.date ? new Date(selectedExpense.date).toLocaleDateString() : ""}</Typography>
+            <Typography><strong>Date:</strong> {selectedExpense?.date ? new Date(selectedExpense.date).toLocaleDateString("en-IN") : ""}</Typography>
             <Typography><strong>Expense Name:</strong> {selectedExpense?.expenseName}</Typography>
             <Typography><strong>Amount:</strong> ₹{selectedExpense?.amount}</Typography>
           </Stack>
@@ -603,7 +603,7 @@ export default function ExpensesPage() {
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={2}>
                         <Typography color="text.secondary">Date</Typography>
-                        <Typography>{new Date(expense.date).toLocaleDateString()}</Typography>
+                        <Typography>{new Date(expense.date).toLocaleDateString("en-IN")}</Typography>
                       </Grid>
                       <Grid item xs={12} md={4}>
                         <Typography color="text.secondary">Expense Name</Typography>

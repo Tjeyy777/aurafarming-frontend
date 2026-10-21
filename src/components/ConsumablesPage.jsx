@@ -775,7 +775,7 @@ export default function ConsumablesPage() {
                               {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              {new Date(tx.date).toLocaleDateString()}
+                              {new Date(tx.date).toLocaleDateString("en-IN")}
                             </Typography>
                             {tx.reason && (
                               <Typography variant="body2" sx={{ mt: 1 }}>
