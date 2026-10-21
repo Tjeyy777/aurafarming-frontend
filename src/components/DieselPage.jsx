@@ -800,13 +800,15 @@ export default function DieselPage() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         moduleName="Diesel"
-        onExportPDF={async (period, customDate) => {
+        machines={ownedMachines}
+        initialMachineId={filterMachine}
+        onExportPDF={async (period, customDate, _companyId, machineId) => {
           const allEntries = await fetchAllDieselEntries();
-          generateDieselPDF({ entries: allEntries, period, customDate });
+          generateDieselPDF({ entries: allEntries, period, customDate, machineId });
         }}
-        onExportExcel={async (period, customDate) => {
+        onExportExcel={async (period, customDate, _companyId, machineId) => {
           const allEntries = await fetchAllDieselEntries();
-          generateDieselExcel({ entries: allEntries, period, customDate });
+          generateDieselExcel({ entries: allEntries, period, customDate, machineId });
         }}
       />
     </Box>

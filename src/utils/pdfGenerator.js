@@ -47,6 +47,15 @@ const machineServiceStatus = (m) => {
 
 // ─── Get date range based on period and custom date ──────────────────────────
 export const getDateRange = (period, customDate) => {
+  if (period === "custom" && customDate && typeof customDate === "object") {
+    const a = new Date(customDate.from || customDate.to || Date.now());
+    const b = new Date(customDate.to || customDate.from || Date.now());
+    const [lo, hi] = a <= b ? [a, b] : [b, a];
+    return {
+      start: new Date(lo.getFullYear(), lo.getMonth(), lo.getDate()),
+      end: new Date(hi.getFullYear(), hi.getMonth(), hi.getDate(), 23, 59, 59, 999),
+    };
+  }
   const base = customDate ? new Date(customDate) : new Date();
   const startOfDay = new Date(base.getFullYear(), base.getMonth(), base.getDate());
   let start, end;
@@ -338,7 +347,7 @@ export function generateQuarryPDF({
 }) {
   const { start, end } = getDateRange(period, customDate);
   const periodLabel =
-    period === "daily" ? "Daily" : period === "weekly" ? "Weekly" : "Monthly";
+    period === "daily" ? "Daily" : period === "weekly" ? "Weekly" : period === "custom" ? "Custom" : "Monthly";
   const dateRangeStr = `${fmtDate(start)} — ${fmtDate(end)}`;
 
   // Filter time-based data
@@ -924,10 +933,11 @@ export function generateRentedVehiclesPDF({ vehicles = [], period, customDate })
   finishModulePDF(doc, "RentedVehicleMaster", periodLabel, start);
 }
 
-export function generateDieselPDF({ entries = [], period, customDate }) {
+export function generateDieselPDF({ entries = [], period, customDate, machineId }) {
   const { doc, start, end, periodLabel } = createModulePDF("Diesel", period, customDate);
   let y = 48;
-  const filtered = filterByDateRange(entries, start, end, "date");
+  const filtered = filterByDateRange(entries, start, end, "date")
+    .filter((e) => !machineId || (e.machineId?._id || e.machineId) === machineId);
   const totalL = filtered.reduce((s, e) => s + Number(e.litres || 0), 0);
   const totalC = filtered.reduce((s, e) => s + Number(e.totalCost || 0), 0);
   y = drawSectionTitle(doc, `Diesel Entries (${periodLabel})`, y);

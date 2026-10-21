@@ -182,27 +182,28 @@ export function generateRentedVehiclesExcel({ vehicles = [], period, customDate 
   saveWorkbook(wb, `RentedVehicleMaster_Report_${fmtDate(start)}.xlsx`);
 }
 
-export function generateDieselExcel({ entries = [], period, customDate }) {
+export function generateDieselExcel({ entries = [], period, customDate, machineId }) {
   const wb = createWorkbook();
   const { start, end } = getDateRange(period, customDate);
-  const filtered = filterByDateRange(entries, start, end, "date");
+  const filtered = filterByDateRange(entries, start, end, "date")
+    .filter((e) => !machineId || (e.machineId?._id || e.machineId) === machineId)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const totalLitres = filtered.reduce((s, e) => s + Number(e.litres || 0), 0);
   const totalCost = filtered.reduce((s, e) => s + Number(e.totalCost || 0), 0);
 
-  addSheet(wb, "Summary", [
-    ["Total Litres", totalLitres],
-    ["Total Cost (₹)", totalCost],
-    ["Entries", filtered.length],
-  ], ["Metric", "Value"]);
-
-  addSheet(wb, "Diesel Entries", filtered.map((e, i) => [
+  const rows = filtered.map((e, i) => [
     i + 1, fmtDate(e.date),
     e.dieselFor === "machine" ? (e.machineId?.machineName || "Machine") : (e.expenseName || "—"),
-    e.litres ?? "—", e.pricePerLitre || 0, e.totalCost || 0,
-  ]), ["#", "Date", "For", "Litres", "Rate/L (₹)", "Total Cost (₹)"]);
+    Number(e.litres || 0), Number(e.pricePerLitre || 0), Number(e.totalCost || 0), e.notes || "",
+  ]);
+  rows.push(["", "", "TOTAL", totalLitres, "", totalCost, ""]);
 
-  saveWorkbook(wb, `Diesel_Report_${fmtDate(start)}.xlsx`);
+  addSheet(wb, "Diesel Ledger", rows,
+    ["#", "Date", "Machine / For", "Litres", "Price/Litre (₹)", "Total Cost (₹)", "Notes"]);
+
+  const tag = (d) => fmtDate(d).replace(/\s/g, "_");
+  saveWorkbook(wb, `Diesel_Ledger_${tag(start)}_to_${tag(end)}.xlsx`);
 }
 
 export function generateExpensesExcel({ expenses = [], period, customDate }) {

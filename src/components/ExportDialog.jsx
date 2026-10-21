@@ -1,6 +1,6 @@
 // src/components/ExportDialog.jsx
 // Reusable export dialog for per-module PDF/Excel generation
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack,
   Typography, Box, Chip, ToggleButtonGroup, ToggleButton, TextField,
@@ -22,26 +22,42 @@ import { getDateRange } from "../utils/pdfGenerator";
  * @param {Function} props.onExportPDF - (period, customDate) => void
  * @param {Function} props.onExportExcel - (period, customDate) => void
  */
-export default function ExportDialog({ open, onClose, moduleName, onExportPDF, onExportExcel, companies }) {
+export default function ExportDialog({ open, onClose, moduleName, onExportPDF, onExportExcel, companies, machines, initialMachineId = "" }) {
   const [period, setPeriod] = useState("daily");
   const [customDate, setCustomDate] = useState(new Date().toISOString().split("T")[0]);
+  const today = new Date().toISOString().split("T")[0];
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [selectedMachineId, setSelectedMachineId] = useState(initialMachineId || "");
+
+  // Re-sync with the page's active machine filter each time the dialog opens
+  useEffect(() => {
+    if (open) setSelectedMachineId(initialMachineId || "");
+  }, [open, initialMachineId]);
+
+  const isCustom = period === "custom";
+  const rangeArg = useMemo(
+    () => (isCustom ? { from: fromDate, to: toDate } : customDate),
+    [isCustom, fromDate, toDate, customDate]
+  );
   const [loading, setLoading] = useState(false);
 
   const previewRange = useMemo(() => {
-    const { start, end } = getDateRange(period, customDate);
+    const { start, end } = getDateRange(period, rangeArg);
     const fmt = (d) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     return `${fmt(start)} — ${fmt(end)}`;
-  }, [period, customDate]);
+  }, [period, rangeArg]);
 
   const handleExport = async (type) => {
     setLoading(true);
     try {
       await new Promise((r) => setTimeout(r, 80));
-      if (type === "pdf") await onExportPDF(period, customDate, selectedCompanyId);
-      else await onExportExcel(period, customDate, selectedCompanyId);
+      if (type === "pdf") await onExportPDF(period, rangeArg, selectedCompanyId, selectedMachineId);
+      else await onExportExcel(period, rangeArg, selectedCompanyId, selectedMachineId);
     } catch (err) {
       console.error(`${type} export failed:`, err);
+      window.alert(`Export failed: ${err?.message || "Unknown error"}`);
     } finally {
       setLoading(false);
       onClose();
@@ -75,14 +91,38 @@ export default function ExportDialog({ open, onClose, moduleName, onExportPDF, o
             <ToggleButton value="daily"><CalendarTodayIcon sx={{ fontSize: 16, mr: 0.8 }} /> Day</ToggleButton>
             <ToggleButton value="weekly"><DateRangeIcon sx={{ fontSize: 16, mr: 0.8 }} /> Week</ToggleButton>
             <ToggleButton value="monthly"><CalendarMonthIcon sx={{ fontSize: 16, mr: 0.8 }} /> Month</ToggleButton>
+            <ToggleButton value="custom"><DateRangeIcon sx={{ fontSize: 16, mr: 0.8 }} /> Custom</ToggleButton>
           </ToggleButtonGroup>
         </Box>
 
         {/* Date picker */}
+        {isCustom ? (
+          <Stack direction="row" spacing={1.5}>
+            <TextField type="date" label="From Date" value={fromDate}
+              onChange={(e) => { setFromDate(e.target.value); if (e.target.value > toDate) setToDate(e.target.value); }}
+              fullWidth InputLabelProps={{ shrink: true }} sx={{ "& fieldset": { borderRadius: "12px" } }} />
+            <TextField type="date" label="To Date" value={toDate} inputProps={{ min: fromDate }}
+              onChange={(e) => setToDate(e.target.value)}
+              fullWidth InputLabelProps={{ shrink: true }} sx={{ "& fieldset": { borderRadius: "12px" } }} />
+          </Stack>
+        ) : (
         <TextField type="date"
           label={period === "daily" ? "Select Date" : period === "weekly" ? "Pick any day in the week" : "Pick any day in the month"}
           value={customDate} onChange={(e) => setCustomDate(e.target.value)} fullWidth
           InputLabelProps={{ shrink: true }} sx={{ "& fieldset": { borderRadius: "12px" } }} />
+        )}
+
+        {machines && (
+          <TextField select label="Machine Filter" value={selectedMachineId}
+            onChange={(e) => setSelectedMachineId(e.target.value)} fullWidth
+            SelectProps={{ native: true }} InputLabelProps={{ shrink: true }}
+            sx={{ "& fieldset": { borderRadius: "12px" } }}>
+            <option value="">All</option>
+            {machines.map((m) => (
+              <option key={m._id} value={m._id}>{m.machineName || m.name}</option>
+            ))}
+          </TextField>
+        )}
 
         {/* Company Filter (Optional) */}
         {companies && (
@@ -112,7 +152,7 @@ export default function ExportDialog({ open, onClose, moduleName, onExportPDF, o
           <Typography variant="body1" sx={{ fontWeight: 700, mt: 0.5, color: "primary.main" }}>
             {previewRange}
           </Typography>
-          <Chip label={period === "daily" ? "Single Day" : period === "weekly" ? "Full Week (Mon–Sun)" : "Full Month"}
+          <Chip label={period === "custom" ? "Custom Range" : period === "daily" ? "Single Day" : period === "weekly" ? "Full Week (Mon–Sun)" : "Full Month"}
             size="small" color="primary" variant="outlined" sx={{ fontWeight: 700, mt: 1 }} />
         </Box>
       </DialogContent>
