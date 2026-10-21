@@ -423,7 +423,7 @@ export default function DieselPage() {
                       Date
                     </Typography>
                     <Typography sx={{ fontWeight: 700 }}>
-                      {new Date(entry.date).toLocaleDateString()}
+                      {new Date(entry.date).toLocaleDateString("en-IN")}
                     </Typography>
                   </Box>
 
@@ -624,7 +624,7 @@ export default function DieselPage() {
           </Typography>
 
           <Stack spacing={1}>
-            <Typography><strong>Date:</strong> {selectedEntry?.date ? new Date(selectedEntry.date).toLocaleDateString() : ""}</Typography>
+            <Typography><strong>Date:</strong> {selectedEntry?.date ? new Date(selectedEntry.date).toLocaleDateString("en-IN") : ""}</Typography>
             <Typography><strong>Diesel For:</strong> {selectedEntry?.dieselFor === "machine" ? "Machine" : "Other Expense"}</Typography>
             <Typography>
               <strong>Name:</strong>{" "}
@@ -650,7 +650,7 @@ export default function DieselPage() {
 
         <DialogContent dividers>
           <Stack spacing={1.5}>
-            <Typography><strong>Date:</strong> {selectedEntry?.date ? new Date(selectedEntry.date).toLocaleDateString() : ""}</Typography>
+            <Typography><strong>Date:</strong> {selectedEntry?.date ? new Date(selectedEntry.date).toLocaleDateString("en-IN") : ""}</Typography>
             <Typography><strong>Diesel For:</strong> {selectedEntry?.dieselFor === "machine" ? "Machine" : "Other Expense"}</Typography>
             <Typography>
               <strong>Name:</strong>{" "}
@@ -665,8 +665,8 @@ export default function DieselPage() {
             <Typography><strong>Price Per Litre:</strong> ₹{selectedEntry?.pricePerLitre}</Typography>
             <Typography><strong>Total Cost:</strong> ₹{selectedEntry?.totalCost}</Typography>
             <Typography><strong>Notes:</strong> {selectedEntry?.notes || "—"}</Typography>
-            <Typography><strong>Created At:</strong> {selectedEntry?.createdAt ? new Date(selectedEntry.createdAt).toLocaleString() : ""}</Typography>
-            <Typography><strong>Updated At:</strong> {selectedEntry?.updatedAt ? new Date(selectedEntry.updatedAt).toLocaleString() : ""}</Typography>
+            <Typography><strong>Created At:</strong> {selectedEntry?.createdAt ? new Date(selectedEntry.createdAt).toLocaleString("en-IN") : ""}</Typography>
+            <Typography><strong>Updated At:</strong> {selectedEntry?.updatedAt ? new Date(selectedEntry.updatedAt).toLocaleString("en-IN") : ""}</Typography>
           </Stack>
         </DialogContent>
 
@@ -757,7 +757,7 @@ export default function DieselPage() {
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={2}>
                         <Typography color="text.secondary">Date</Typography>
-                        <Typography>{new Date(entry.date).toLocaleDateString()}</Typography>
+                        <Typography>{new Date(entry.date).toLocaleDateString("en-IN")}</Typography>
                       </Grid>
                       <Grid item xs={12} md={2}>
                         <Typography color="text.secondary">Diesel For</Typography>
