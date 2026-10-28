@@ -1030,11 +1030,36 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
       ...costCards
     ], y);
 
+    // Sub-entries (trips) are listed directly under their parent entry and
+    // numbered 1.1, 1.2… A trip whose parent isn't in this period/company
+    // filter is still shown, in its own date position, so nothing is dropped.
+    const idOf = (v) => String(v?._id || v || "");
+    const mainIds = new Set(mainEntries.map((l) => idOf(l._id)));
+    const tripsByParent = {};
+    tripEntries.forEach((t) => {
+      const pid = idOf(t.parentLogId);
+      if (pid && mainIds.has(pid)) (tripsByParent[pid] ||= []).push(t);
+    });
+    const tableRows = [];
+    let seq = 0;
+    sortedLogs.forEach((l) => {
+      if (l.isTrip) {
+        const pid = idOf(l.parentLogId);
+        if (pid && mainIds.has(pid)) return; // rendered under its parent
+        tableRows.push({ log: l, label: String(++seq) });
+        return;
+      }
+      tableRows.push({ log: l, label: String(++seq) });
+      (tripsByParent[idOf(l._id)] || []).forEach((t, ti) => {
+        tableRows.push({ log: t, label: `${seq}.${ti + 1}` });
+      });
+    });
+
     y = drawTable(
       doc,
       ["#", "Date", "Vehicle", "Company", "Type", "Material", "Driver", "Rate/Hr", "Opening", "Closing", "Hours", "Cost", "Trip?", "Remarks"],
-      sortedLogs.map((l, i) => [
-        i + 1,
+      tableRows.map(({ log: l, label }) => [
+        label,
         fmtDate(l.date),
         l.vehicleId?.vehicleNumber || "—",
         l.companyId ? `${l.companyId.name}${l.companyId.isOwner ? " (Own)" : ""}` : "—",
@@ -1053,7 +1078,7 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
       {
         fontSize: 7.2,
         columnStyles: {
-          0: { cellWidth: 7, halign: "center" },
+          0: { cellWidth: 10, halign: "center" },
           1: { cellWidth: 18 },
           2: { cellWidth: 22 },
           3: { cellWidth: 20 },
@@ -1073,7 +1098,7 @@ export function generateRentedLogsPDF({ logs = [], period, customDate, companyNa
 
     // Daily Report Section
     const dateGroups = {};
-    mainEntries.forEach(l => {
+    sortedLogs.forEach(l => {
       const d = l.date ? l.date.split("T")[0] : null;
       if (!d) return;
       if (!dateGroups[d]) dateGroups[d] = [];
